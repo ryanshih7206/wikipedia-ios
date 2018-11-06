@@ -59,6 +59,9 @@ public class ReadingListHintController: NSObject, ReadingListHintViewControllerD
             wmfVCPresenter.view.insertSubview(containerView, belowSubview: wmfVCPresenter.toolbar)
             additionalBottomSpacing = wmfVCPresenter.toolbar.frame.size.height
         } else {
+            if let search = presenter as? SearchResultsViewController, let scrollView = search.scrollView {
+                additionalBottomSpacing = scrollView.contentInset.bottom - scrollView.safeAreaInsets.bottom // hax
+            }
             presenter?.view.addSubview(containerView)
         }
         
@@ -75,10 +78,6 @@ public class ReadingListHintController: NSObject, ReadingListHintViewControllerD
             let leadingConstraint = containerView.leadingAnchor.constraint(equalTo: presenter.view.leadingAnchor)
             let trailingConstraint = containerView.trailingAnchor.constraint(equalTo: presenter.view.trailingAnchor)
             NSLayoutConstraint.activate([containerTopConstraint!, leadingConstraint, trailingConstraint])
-            
-            if presenter.isKind(of: SearchResultsViewController.self){
-                presenter.wmf_hideKeyboard()
-            }
         } else {
             assertionFailure("Expected presenter")
         }

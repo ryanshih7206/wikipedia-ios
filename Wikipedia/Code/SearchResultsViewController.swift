@@ -84,7 +84,7 @@ class SearchResultsViewController: ArticleCollectionViewController {
         }
         cell.configureForCompactList(at: indexPath.item)
         cell.setTitleHTML(result.displayTitleHTML, boldedString: resultsInfo?.searchTerm)
-       
+        editController.configureSwipeableCell(cell, forItemAt: indexPath, layoutOnly: layoutOnly)
         cell.articleSemanticContentAttribute = MWLanguageInfo.semanticContentAttribute(forWMFLanguage: language)
         cell.titleLabel.accessibilityLanguage = language
         cell.descriptionLabel.text = descriptionForSearchResult(result)
@@ -103,6 +103,30 @@ class SearchResultsViewController: ArticleCollectionViewController {
             return
         }
         collectionView.backgroundColor = theme.colors.midBackground
+    }
+    
+    // MARK - Actions
+    
+    override func canSave(at indexPath: IndexPath) -> Bool {
+        guard let article = article(at: indexPath) else {
+            return false
+        }
+        return article.savedDate == nil
+    }
+    
+    override func canUnsave(at indexPath: IndexPath) -> Bool {
+        guard let article = article(at: indexPath) else {
+            return false
+        }
+        return article.savedDate != nil
+    }
+    
+    override func canShare(at indexPath: IndexPath) -> Bool {
+        return true
+    }
+    
+    override func canDelete(at indexPath: IndexPath) -> Bool {
+        return false
     }
 
 }
