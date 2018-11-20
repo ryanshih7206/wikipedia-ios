@@ -1,10 +1,8 @@
 import UIKit
 
-fileprivate let reuseIdentifier = "ArticleCollectionViewControllerCell"
-
 @objc(WMFArticleCollectionViewControllerDelegate)
 protocol ArticleCollectionViewControllerDelegate: NSObjectProtocol {
-    func articleCollectionViewController(_ articleCollectionViewController: ArticleCollectionViewController, didSelectArticleWithURL: URL)
+    func articleCollectionViewController(_ articleCollectionViewController: ArticleCollectionViewController, didSelectArticleWithURL: URL, at indexPath: IndexPath)
 }
 
 @objc(WMFArticleCollectionViewController)
@@ -15,14 +13,17 @@ class ArticleCollectionViewController: ColumnarCollectionViewController, Reading
         }
     }
     var cellLayoutEstimate: ColumnarCollectionViewLayoutHeightEstimate?
+
     var editController: CollectionViewEditController!
     var readingListHintController: ReadingListHintController?
     
     @objc weak var delegate: ArticleCollectionViewControllerDelegate?
+
+    var feedFunnelContext: FeedFunnelContext?
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        layoutManager.register(ArticleRightAlignedImageCollectionViewCell.self, forCellWithReuseIdentifier: reuseIdentifier, addPlaceholder: true)
+        layoutManager.register(ArticleRightAlignedImageCollectionViewCell.self, forCellWithReuseIdentifier: ArticleRightAlignedImageCollectionViewCell.identifier, addPlaceholder: true)
         setupEditController()
     }
     
@@ -102,15 +103,26 @@ class ArticleCollectionViewController: ColumnarCollectionViewController, Reading
     var eventLoggingLabel: EventLoggingLabel? {
         return nil
     }
+
+    var eventLoggingIndex: NSNumber? {
+        guard let index = previewedIndexPath?.item else {
+            return nil
+        }
+        return NSNumber(value: index)
+    }
+
+    var previewedIndexPath: IndexPath?
+
+    // MARK: - Layout
     
     override func collectionView(_ collectionView: UICollectionView, estimatedHeightForItemAt indexPath: IndexPath, forColumnWidth columnWidth: CGFloat) -> ColumnarCollectionViewLayoutHeightEstimate {
-        // The layout estimate can be re-used in this case becuause both labels are one line, meaning the cell
+        // The layout estimate can be re-used in this case because both labels are one line, meaning the cell
         // size only varies with font size. The layout estimate is nil'd when the font size changes on trait collection change
         if let estimate = cellLayoutEstimate {
             return estimate
         }
         var estimate = ColumnarCollectionViewLayoutHeightEstimate(precalculated: false, height: 60)
-        guard let placeholderCell = layoutManager.placeholder(forCellWithReuseIdentifier: reuseIdentifier) as? ArticleRightAlignedImageCollectionViewCell else {
+        guard let placeholderCell = layoutManager.placeholder(forCellWithReuseIdentifier: ArticleRightAlignedImageCollectionViewCell.identifier) as? ArticleRightAlignedImageCollectionViewCell else {
             return estimate
         }
         configure(cell: placeholderCell, forItemAt: indexPath, layoutOnly: true)
@@ -118,7 +130,7 @@ class ArticleCollectionViewController: ColumnarCollectionViewController, Reading
         placeholderCell.isImageViewHidden = false
         placeholderCell.titleLabel.text = "any"
         placeholderCell.descriptionLabel.text = "any"
-        estimate.height = placeholderCell.sizeThatFits(CGSize(width: columnWidth, height: UIViewNoIntrinsicMetric), apply: false).height
+        estimate.height = placeholderCell.sizeThatFits(CGSize(width: columnWidth, height: UIView.noIntrinsicMetric), apply: false).height
         estimate.precalculated = true
         cellLayoutEstimate = estimate
         return estimate
@@ -126,16 +138,6 @@ class ArticleCollectionViewController: ColumnarCollectionViewController, Reading
     
     override func metrics(with size: CGSize, readableWidth: CGFloat, layoutMargins: UIEdgeInsets) -> ColumnarCollectionViewLayoutMetrics {
         return ColumnarCollectionViewLayoutMetrics.tableViewMetrics(with: size, readableWidth: readableWidth, layoutMargins: layoutMargins)
-    }
-}
-
-extension ArticleCollectionViewController: AnalyticsContextProviding, AnalyticsViewNameProviding {
-    var analyticsName: String {
-        return "ArticleList"
-    }
-    
-    var analyticsContext: String {
-        return analyticsName
     }
 }
 
@@ -152,7 +154,7 @@ extension ArticleCollectionViewController {
     
     // Override configure(cell: instead to ensure height calculations are accurate
     override open func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: reuseIdentifier, for: indexPath)
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ArticleRightAlignedImageCollectionViewCell.identifier, for: indexPath)
         guard let articleCell = cell as? ArticleRightAlignedImageCollectionViewCell else {
             return cell
         }
@@ -168,7 +170,7 @@ extension ArticleCollectionViewController {
             collectionView.deselectItem(at: indexPath, animated: true)
             return
         }
-        delegate?.articleCollectionViewController(self, didSelectArticleWithURL: articleURL)
+        delegate?.articleCollectionViewController(self, didSelectArticleWithURL: articleURL, at: indexPath)
         wmf_pushArticle(with: articleURL, dataStore: dataStore, theme: theme, animated: true)
     }
     
@@ -183,17 +185,19 @@ extension ArticleCollectionViewController {
         guard !editController.isActive else {
             return nil // don't allow 3d touch when swipe actions are active
         }
-        guard let indexPath = collectionView.indexPathForItem(at: location),
-            let cell = collectionView.cellForItem(at: indexPath) as? ArticleRightAlignedImageCollectionViewCell,
-            let url = articleURL(at: indexPath)
-        else {
-                return nil
-        }
-        previewingContext.sourceRect = cell.convert(cell.bounds, to: collectionView)
         
-        let articleViewController = WMFArticleViewController(articleURL: url, dataStore: dataStore, theme: self.theme)
+        guard
+            let indexPath = collectionViewIndexPathForPreviewingContext(previewingContext, location: location),
+            let articleURL = articleURL(at: indexPath)
+        else {
+            return nil
+        }
+
+        previewedIndexPath = indexPath
+
+        let articleViewController = WMFArticleViewController(articleURL: articleURL, dataStore: dataStore, theme: self.theme)
         articleViewController.articlePreviewingActionsDelegate = self
-        articleViewController.wmf_addPeekableChildViewController(for: url, dataStore: dataStore, theme: theme)
+        articleViewController.wmf_addPeekableChildViewController(for: articleURL, dataStore: dataStore, theme: theme)
         return articleViewController
     }
     
@@ -205,9 +209,8 @@ extension ArticleCollectionViewController {
 
 extension ArticleCollectionViewController: ActionDelegate {
     
-    func didPerformBatchEditToolbarAction(_ action: BatchEditToolbarAction) -> Bool {
+    func didPerformBatchEditToolbarAction(_ action: BatchEditToolbarAction, completion: @escaping (Bool) -> Void) {
         assert(false, "Subclassers should override this function")
-        return false
     }
     
     func willPerformAction(_ action: Action) -> Bool {
@@ -218,11 +221,15 @@ extension ArticleCollectionViewController: ActionDelegate {
             return self.editController.didPerformAction(action)
         }
         let alertController = ReadingListsAlertController()
-        let cancel = ReadingListsAlertActionType.cancel.action { self.editController.close() }
+        let cancel = ReadingListsAlertActionType.cancel.action()
         let delete = ReadingListsAlertActionType.unsave.action { let _ = self.editController.didPerformAction(action) }
-        return alertController.showAlert(presenter: self, for: [article], with: [cancel, delete], completion: nil) {
-            return self.editController.didPerformAction(action)
+        let actions = [cancel, delete]
+        alertController.showAlertIfNeeded(presenter: self, for: [article], with: actions) { showed in
+            if !showed {
+                let _ = self.editController.didPerformAction(action)
+            }
         }
+        return true
     }
     
     func didPerformAction(_ action: Action) -> Bool {
@@ -231,25 +238,25 @@ extension ArticleCollectionViewController: ActionDelegate {
         switch action.type {
         case .delete:
             delete(at: indexPath)
-            UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, CommonStrings.articleDeletedNotification(articleCount: 1))
+            UIAccessibility.post(notification: UIAccessibility.Notification.announcement, argument: CommonStrings.articleDeletedNotification(articleCount: 1))
             return true
         case .save:
             if let articleURL = articleURL(at: indexPath) {
                 dataStore.savedPageList.addSavedPage(with: articleURL)
-                UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, CommonStrings.accessibilitySavedNotification)
+                UIAccessibility.post(notification: UIAccessibility.Notification.announcement, argument: CommonStrings.accessibilitySavedNotification)
                 if let article = article(at: indexPath) {
                     readingListHintController?.didSave(true, article: article, theme: theme)
-                    ReadingListsFunnel.shared.logSave(category: eventLoggingCategory, label: eventLoggingLabel, articleURL: articleURL)
+                    ReadingListsFunnel.shared.logSave(category: eventLoggingCategory, label: eventLoggingLabel, articleURL: articleURL, date: feedFunnelContext?.midnightUTCDate, measurePosition: indexPath.item)
                 }
                 return true
             }
         case .unsave:
             if let articleURL = articleURL(at: indexPath) {
                 dataStore.savedPageList.removeEntry(with: articleURL)
-                UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, CommonStrings.accessibilityUnsavedNotification)
+                UIAccessibility.post(notification: UIAccessibility.Notification.announcement, argument: CommonStrings.accessibilityUnsavedNotification)
                 if let article = article(at: indexPath) {
                     readingListHintController?.didSave(false, article: article, theme: theme)
-                    ReadingListsFunnel.shared.logUnsave(category: eventLoggingCategory, label: eventLoggingLabel, articleURL: articleURL)
+                    ReadingListsFunnel.shared.logUnsave(category: eventLoggingCategory, label: eventLoggingLabel, articleURL: articleURL, date: feedFunnelContext?.midnightUTCDate, measurePosition: indexPath.item)
                 }
                 return true
             }

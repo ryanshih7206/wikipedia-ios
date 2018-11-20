@@ -11,6 +11,7 @@ typedef NSString *EventLoggingCategory NS_TYPED_EXTENSIBLE_ENUM;
 typedef NSString *EventLoggingLabel NS_TYPED_EXTENSIBLE_ENUM;
 
 extern EventLoggingCategory const EventLoggingCategoryFeed;
+extern EventLoggingCategory const EventLoggingCategoryFeedDetail;
 extern EventLoggingCategory const EventLoggingCategoryHistory;
 extern EventLoggingCategory const EventLoggingCategoryPlaces;
 extern EventLoggingCategory const EventLoggingCategoryArticle;
@@ -41,6 +42,8 @@ extern EventLoggingLabel const EventLoggingLabelLogin;
 extern EventLoggingLabel const EventLoggingLabelSyncArticle;
 extern EventLoggingLabel const EventLoggingLabelLocation;
 extern EventLoggingLabel const EventLoggingLabelMainPage;
+extern EventLoggingLabel const EventLoggingLabelContinueReading;
+extern EventLoggingLabel const EventLoggingLabelPictureOfTheDay;
 
 /**
  * Base class for EventLogging multi-stage funnels.

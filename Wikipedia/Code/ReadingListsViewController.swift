@@ -6,6 +6,7 @@ enum ReadingListsDisplayType {
 
 protocol ReadingListsViewControllerDelegate: NSObjectProtocol {
     func readingListsViewController(_ readingListsViewController: ReadingListsViewController, didAddArticles articles: [WMFArticle], to readingList: ReadingList)
+    func readingListsViewControllerDidChangeEmptyState(_ readingListsViewController: ReadingListsViewController, isEmpty: Bool)
 }
 
 @objc(WMFReadingListsViewController)
@@ -106,6 +107,7 @@ class ReadingListsViewController: ColumnarCollectionViewController, EditableColl
         super.viewDidLoad()
         layoutManager.register(ReadingListsCollectionViewCell.self, forCellWithReuseIdentifier: ReadingListsCollectionViewCell.identifier, addPlaceholder: true)
         emptyViewType = .noReadingLists
+        emptyViewAction = #selector(presentCreateReadingListViewController)
         setupEditController()
         // Remove peek & pop for now
         unregisterForPreviewing()
@@ -126,18 +128,16 @@ class ReadingListsViewController: ColumnarCollectionViewController, EditableColl
         editController.isShowingDefaultCellOnly = isShowingDefaultReadingListOnly
         super.viewWillAppear(animated)
     }
-    
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        editController.close()
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
         collectionViewUpdater = nil
         fetchedResultsController = nil
+        editController.close()
     }
     
     func readingList(at indexPath: IndexPath) -> ReadingList? {
-        guard let fetchedResultsController = fetchedResultsController, let sections = fetchedResultsController.sections,
-            indexPath.section < sections.count,
-            indexPath.item < sections[indexPath.section].numberOfObjects else {
+        guard let fetchedResultsController = fetchedResultsController,fetchedResultsController.isValidIndexPath(indexPath) else {
                 return nil
         }
         return fetchedResultsController.object(at: indexPath)
@@ -153,20 +153,12 @@ class ReadingListsViewController: ColumnarCollectionViewController, EditableColl
         }
         createReadingListViewController.delegate = self
         let navigationController = WMFThemeableNavigationController(rootViewController: createReadingListViewController, theme: theme)
-        createReadingListViewController.navigationItem.leftBarButtonItem = UIBarButtonItem.wmf_buttonType(WMFButtonType.X, target: self, action: #selector(dismissCreateReadingListViewController))
+        createReadingListViewController.navigationItem.rightBarButtonItem = UIBarButtonItem.wmf_buttonType(WMFButtonType.X, target: self, action: #selector(dismissCreateReadingListViewController))
         present(navigationController, animated: true, completion: nil)
     }
-
-    public lazy var createNewReadingListButtonView: CreateNewReadingListButtonView = {
-        let createNewReadingListButtonView = CreateNewReadingListButtonView.wmf_viewFromClassNib()
-        createNewReadingListButtonView?.title = CommonStrings.createNewListTitle
-        createNewReadingListButtonView?.addTarget(self, action: #selector(presentCreateReadingListViewController), for: .touchUpInside)
-        createNewReadingListButtonView?.apply(theme: theme)
-        return createNewReadingListButtonView!
-    }()
     
     @objc func presentCreateReadingListViewController() {
-        createReadingList(with: [])
+        createReadingList(with: articles)
     }
     
     @objc func dismissCreateReadingListViewController() {
@@ -181,6 +173,14 @@ class ReadingListsViewController: ColumnarCollectionViewController, EditableColl
                 CommonStrings.unknownError, sticky: false, dismissPreviousAlerts: true, tapCallBack: nil)
         }
     }
+
+    public lazy var createNewReadingListButtonView: CreateNewReadingListButtonView = {
+        let createNewReadingListButtonView = CreateNewReadingListButtonView.wmf_viewFromClassNib()
+        createNewReadingListButtonView?.title = CommonStrings.createNewListTitle
+        createNewReadingListButtonView?.button.addTarget(self, action: #selector(presentCreateReadingListViewController), for: .touchUpInside)
+        createNewReadingListButtonView?.apply(theme: theme)
+        return createNewReadingListButtonView!
+    }()
     
     // MARK: - Cell configuration
     
@@ -215,7 +215,7 @@ class ReadingListsViewController: ColumnarCollectionViewController, EditableColl
             return estimate
         }
         configure(cell: placeholderCell, forItemAt: indexPath, layoutOnly: true)
-        estimate.height = placeholderCell.sizeThatFits(CGSize(width: columnWidth, height: UIViewNoIntrinsicMetric), apply: false).height
+        estimate.height = placeholderCell.sizeThatFits(CGSize(width: columnWidth, height: UIView.noIntrinsicMetric), apply: false).height
         estimate.precalculated = true
         return estimate
     }
@@ -228,12 +228,9 @@ class ReadingListsViewController: ColumnarCollectionViewController, EditableColl
     
     override func isEmptyDidChange() {
         editController.isCollectionViewEmpty = isEmpty
-        if isEmpty {
-            collectionView.isHidden = true
-        } else {
-            collectionView.isHidden = false
-        }
+        collectionView.isHidden = isEmpty
         super.isEmptyDidChange()
+        delegate?.readingListsViewControllerDidChangeEmptyState(self, isEmpty: isEmpty)
     }
     
     func collectionView(_ collectionView: UICollectionView, shouldSelectItemAt indexPath: IndexPath) -> Bool {
@@ -296,6 +293,7 @@ class ReadingListsViewController: ColumnarCollectionViewController, EditableColl
 
     override func apply(theme: Theme) {
         super.apply(theme: theme)
+        view.backgroundColor = theme.colors.paperBackground
         createNewReadingListButtonView.apply(theme: theme)
     }
 }
@@ -371,9 +369,7 @@ extension ReadingListsViewController: CollectionViewUpdaterDelegate {
     }
     
     func collectionViewUpdater<T>(_ updater: CollectionViewUpdater<T>, updateItemAtIndexPath indexPath: IndexPath, in collectionView: UICollectionView) where T : NSFetchRequestResult {
-
     }
-
 }
 
 // MARK: - ActionDelegate
@@ -387,11 +383,14 @@ extension ReadingListsViewController: ActionDelegate {
             return self.editController.didPerformAction(action)
         }
         let alertController = ReadingListsAlertController()
-        let cancel = ReadingListsAlertActionType.cancel.action { self.editController.close() }
+        let cancel = ReadingListsAlertActionType.cancel.action()
         let delete = ReadingListsAlertActionType.delete.action { let _ = self.editController.didPerformAction(action) }
-        return alertController.showAlert(presenter: self, for: [readingList], with: [cancel, delete], completion: nil) {
-            return self.editController.didPerformAction(action)
+        alertController.showAlertIfNeeded(presenter: self, for: [readingList], with: [cancel, delete]) { showed in
+            if !showed {
+                let _ = self.editController.didPerformAction(action)
+            }
         }
+        return true
     }
     
     private func deleteReadingLists(_ readingLists: [ReadingList]) {
@@ -409,31 +408,38 @@ extension ReadingListsViewController: ActionDelegate {
         }
     }
     
-    func didPerformBatchEditToolbarAction(_ action: BatchEditToolbarAction) -> Bool {
+    func didPerformBatchEditToolbarAction(_ action: BatchEditToolbarAction, completion: @escaping (Bool) -> Void) {
         guard let selectedIndexPaths = collectionView.indexPathsForSelectedItems else {
-            return false
+            completion(false)
+            return
         }
         
         let readingLists: [ReadingList] = selectedIndexPaths.compactMap({ readingList(at: $0) })
         
         switch action.type {
-        case .update:
-            return true
         case .delete:
             let alertController = ReadingListsAlertController()
+            let deleteReadingLists = {
+                self.deleteReadingLists(readingLists)
+                completion(true)
+            }
             let delete = ReadingListsAlertActionType.delete.action {
                 self.deleteReadingLists(readingLists)
+                completion(true)
             }
-            var didPerform = false
-            return alertController.showAlert(presenter: self, for: readingLists, with: [ReadingListsAlertActionType.cancel.action(), delete], completion: { didPerform = true }) {
-                self.deleteReadingLists(readingLists)
-                didPerform = true
-                return didPerform
+            let cancel = ReadingListsAlertActionType.cancel.action {
+                completion(false)
+            }
+            let actions = [cancel, delete]
+            alertController.showAlertIfNeeded(presenter: self, for: readingLists, with: actions) { showed in
+                if !showed {
+                    deleteReadingLists()
+                }
             }
         default:
+            completion(false)
             break
         }
-        return false
     }
     
     func didPerformAction(_ action: Action) -> Bool {
@@ -444,7 +450,7 @@ extension ReadingListsViewController: ActionDelegate {
         switch action.type {
         case .delete:
             self.deleteReadingLists([readingList])
-            UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, WMFLocalizedString("reading-list-deleted-accessibility-notification", value: "Reading list deleted", comment: "Notification spoken after user deletes a reading list from the list."))
+            UIAccessibility.post(notification: UIAccessibility.Notification.announcement, argument: WMFLocalizedString("reading-list-deleted-accessibility-notification", value: "Reading list deleted", comment: "Notification spoken after user deletes a reading list from the list."))
             return true
         default:
             return false

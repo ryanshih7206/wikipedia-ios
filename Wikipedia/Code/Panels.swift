@@ -90,14 +90,14 @@ class EnableLocationPanelViewController : ScrollableEducationPanelViewController
     }
 }
 
-class ReLoginFailedPanelViewController : ScrollableEducationPanelViewController {
+class LoggedOutPanelViewController: ScrollableEducationPanelViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
-        image = UIImage(named: "relogin-failed")
-        heading = WMFLocalizedString("relogin-failed-title", value:"Unable to re-establish log in", comment:"Title for letting user know they are no longer logged in.")
-        subheading = WMFLocalizedString("relogin-failed-subtitle", value:"Your session may have expired or previous log in credentials are no longer valid.", comment:"Subtitle for letting user know they are no longer logged in.")
-        primaryButtonTitle = WMFLocalizedString("relogin-failed-retry-login-button-title", value:"Try to log in again", comment:"Title for button to let user attempt to log in again.")
-        secondaryButtonTitle = WMFLocalizedString("relogin-failed-stay-logged-out-button-title", value:"Keep me logged out", comment:"Title for button for user to choose to remain logged out.")
+        image = UIImage(named: "logged-out-warning")
+        heading = WMFLocalizedString("logged-out-title", value: "You have been logged out", comment: "Title for education panel letting user know they have been logged out.")
+        subheading = WMFLocalizedString("logged-out-subtitle", value: "There was a problem authenticating your account. In order to sync your reading lists and edit under your user name please log back in.", comment: "Subtitle for letting user know there was a problem authenticating their account.")
+        primaryButtonTitle = WMFLocalizedString("logged-out-log-back-in-button-title", value: "Log back in to your account", comment: "Title for button allowing user to log back in to their account")
+        secondaryButtonTitle = WMFLocalizedString("logged-out-continue-without-logging-in-button-title", value: "Continue without logging in", comment: "Title for button allowing user to continue without logging back in to their account")
     }
 }
 
@@ -117,6 +117,17 @@ class LimitHitForUnsortedArticlesPanelViewController: ScrollableEducationPanelVi
         heading = WMFLocalizedString("reading-list-limit-hit-for-unsorted-articles-title", value: "Limit hit for unsorted articles", comment: "Title for letting the user know that the limit for unsorted articles was reached.")
         subheading = WMFLocalizedString("reading-list-limit-hit-for-unsorted-articles-subtitle", value:  "There is a limit of 5000 unsorted articles. Please sort your existing articles into lists to continue the syncing of unsorted articles.", comment: "Subtitle letting the user know that there is a limit of 5000 unsorted articles.")
         primaryButtonTitle = WMFLocalizedString("reading-list-limit-hit-for-unsorted-articles-button-title", value: "Sort articles", comment: "Title for button to sort unsorted articles.")
+    }
+}
+
+class DescriptionPublishedPanelViewController: ScrollableEducationPanelViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        image = UIImage(named: "description-published")
+        heading = WMFLocalizedString("description-published-title", value: "Description published!", comment: "Title for letting the user know their description change succeeded.")
+        subheading = WMFLocalizedString("description-published-subtitle", value:  "You just made Wikipedia better for everyone", comment: "Subtitle encouraging user to continue editing")
+        primaryButtonTitle = WMFLocalizedString("description-published-button-title", value: "Done", comment: "Title for description panel done button.")
+        footer = WMFLocalizedString("description-published-footer", value: "You can also edit articles within this app. Try fixing typos and small sentences by clicking on the pencil icon next time", comment: "Title for footer explaining articles may be edited too - not just descriptions.")
     }
 }
 
@@ -141,7 +152,7 @@ extension UIViewController {
         
     @objc func wmf_showEnableReadingListSyncPanel(theme: Theme, oncePerLogin: Bool = false, didNotPresentPanelCompletion: (() -> Void)? = nil, dismissHandler: ScrollableEducationPanelDismissHandler? = nil) {
         if oncePerLogin {
-            guard !UserDefaults.wmf_userDefaults().wmf_didShowEnableReadingListSyncPanel() else {
+            guard !UserDefaults.wmf.wmf_didShowEnableReadingListSyncPanel() else {
                 didNotPresentPanelCompletion?()
                 return
             }
@@ -168,15 +179,15 @@ extension UIViewController {
         let panelVC = EnableReadingListSyncPanelViewController(showCloseButton: true, primaryButtonTapHandler: enableSyncTapHandler, secondaryButtonTapHandler: nil, dismissHandler: dismissHandler, theme: theme)
         
         presenter.present(panelVC, animated: true, completion: {
-            UserDefaults.wmf_userDefaults().wmf_setDidShowEnableReadingListSyncPanel(true)
+            UserDefaults.wmf.wmf_setDidShowEnableReadingListSyncPanel(true)
             // we don't want to present the "Sync disabled" panel if "Enable sync" was presented, wmf_didShowSyncDisabledPanel will be set to false when app is paused.
-            UserDefaults.wmf_userDefaults().wmf_setDidShowSyncDisabledPanel(true)
+            UserDefaults.wmf.wmf_setDidShowSyncDisabledPanel(true)
             SettingsFunnel.shared.logEnableSyncPopoverImpression()
         })
     }
     
     @objc func wmf_showSyncDisabledPanel(theme: Theme, wasSyncEnabledOnDevice: Bool) {
-        guard !UserDefaults.wmf_userDefaults().wmf_didShowSyncDisabledPanel(),
+        guard !UserDefaults.wmf.wmf_didShowSyncDisabledPanel(),
             wasSyncEnabledOnDevice else {
                 return
         }
@@ -186,7 +197,7 @@ extension UIViewController {
         let panel = SyncDisabledPanelViewController(showCloseButton: true, primaryButtonTapHandler: primaryButtonTapHandler, secondaryButtonTapHandler: nil, dismissHandler: nil, theme: theme)
         let presenter = self.presentedViewController ?? self
         presenter.present(panel, animated: true) {
-            UserDefaults.wmf_userDefaults().wmf_setDidShowSyncDisabledPanel(true)
+            UserDefaults.wmf.wmf_setDidShowSyncDisabledPanel(true)
         }
     }
     
@@ -201,7 +212,7 @@ extension UIViewController {
     @objc func wmf_showSyncEnabledPanelOncePerLogin(theme: Theme, wasSyncEnabledOnDevice: Bool) {
         let presenter = self.presentedViewController ?? self
         guard !isAlreadyPresenting(presenter),
-            !UserDefaults.wmf_userDefaults().wmf_didShowSyncEnabledPanel(),
+            !UserDefaults.wmf.wmf_didShowSyncEnabledPanel(),
             !wasSyncEnabledOnDevice else {
                 return
         }
@@ -210,7 +221,7 @@ extension UIViewController {
         }
         let panel = SyncEnabledPanelViewController(showCloseButton: true, primaryButtonTapHandler: primaryButtonTapHandler, secondaryButtonTapHandler: nil, dismissHandler: nil, theme: theme)
         presenter.present(panel, animated: true) {
-            UserDefaults.wmf_userDefaults().wmf_setDidShowSyncEnabledPanel(true)
+            UserDefaults.wmf.wmf_setDidShowSyncEnabledPanel(true)
         }
     }
     
@@ -241,28 +252,33 @@ extension UIViewController {
         loginVC.apply(theme: theme)
         present(WMFThemeableNavigationController(rootViewController: loginVC, theme: theme), animated: true)
     }
-    
-    @objc func wmf_showReloginFailedPanelIfNecessary(theme: Theme) {
-        guard WMFAuthenticationManager.sharedInstance.hasKeychainCredentials else {
-            return
-        }
-        
-        let tryLoginAgainTapHandler: ScrollableEducationPanelButtonTapHandler = { _ in
-            self.presentedViewController?.dismiss(animated: true, completion: {
-                self.wmf_showLoginViewController(theme: theme)
-            })
-        }
-        let stayLoggedOutTapHandler: ScrollableEducationPanelButtonTapHandler = { _ in
-            self.presentedViewController?.dismiss(animated: true, completion: {
-                self.wmf_showKeepSavedArticlesOnDevicePanelIfNecessary(triggeredBy: .logout, theme: theme) {
-                    WMFAuthenticationManager.sharedInstance.logout()
-                }
-            })
-        }
-        
-        let panelVC = ReLoginFailedPanelViewController(showCloseButton: false, primaryButtonTapHandler: tryLoginAgainTapHandler, secondaryButtonTapHandler: stayLoggedOutTapHandler, dismissHandler: nil, theme: theme)
 
-        present(panelVC, animated: true, completion: nil)
+    @objc func wmf_showLoggedOutPanel(theme: Theme, dismissHandler: @escaping ScrollableEducationPanelDismissHandler) {
+        let primaryButtonTapHandler: ScrollableEducationPanelButtonTapHandler = { _ in
+            self.presentedViewController?.dismiss(animated: true) {
+                self.presenter?.wmf_showLoginViewController(theme: theme, loginDismissedCompletion: {
+                    self.presenter?.wmf_showKeepSavedArticlesOnDevicePanelIfNeeded(triggeredBy: .logout, theme: theme)
+                })
+            }
+        }
+        let secondaryButtonTapHandler: ScrollableEducationPanelButtonTapHandler = { _ in
+            self.presentedViewController?.dismiss(animated: true) {
+                self.presenter?.wmf_showKeepSavedArticlesOnDevicePanelIfNeeded(triggeredBy: .logout, theme: theme)
+            }
+        }
+        let panelVC = LoggedOutPanelViewController(showCloseButton: false, primaryButtonTapHandler: primaryButtonTapHandler, secondaryButtonTapHandler: secondaryButtonTapHandler, dismissHandler: dismissHandler, theme: theme)
+
+        presenter?.present(panelVC, animated: true)
+    }
+
+    private var presenter: UIViewController? {
+        guard view.window == nil else {
+            return self
+        }
+        if presentedViewController is UINavigationController {
+            return presentedViewController
+        }
+        return nil
     }
 
     @objc func wmf_showLoginOrCreateAccountToSyncSavedArticlesToReadingListPanel(theme: Theme, dismissHandler: ScrollableEducationPanelDismissHandler? = nil, loginSuccessCompletion: (() -> Void)? = nil, loginDismissedCompletion: (() -> Void)? = nil) {
@@ -283,7 +299,7 @@ extension UIViewController {
     @objc func wmf_showLoginToSyncSavedArticlesToReadingListPanelOncePerDevice(theme: Theme) {
         guard
             !WMFAuthenticationManager.sharedInstance.isLoggedIn &&
-            !UserDefaults.wmf_userDefaults().wmf_didShowLoginToSyncSavedArticlesToReadingListPanel() &&
+            !UserDefaults.wmf.wmf_didShowLoginToSyncSavedArticlesToReadingListPanel() &&
             !SessionSingleton.sharedInstance().dataStore.readingListsController.isSyncEnabled
         else {
             return
@@ -301,13 +317,14 @@ extension UIViewController {
         let panelVC = LoginToSyncSavedArticlesToReadingListPanelViewController(showCloseButton: true, primaryButtonTapHandler: loginToSyncSavedArticlesTapHandler, secondaryButtonTapHandler: nil, dismissHandler: nil, theme: theme)
         
         present(panelVC, animated: true, completion: {
-            UserDefaults.wmf_userDefaults().wmf_setDidShowLoginToSyncSavedArticlesToReadingListPanel(true)
+            UserDefaults.wmf.wmf_setDidShowLoginToSyncSavedArticlesToReadingListPanel(true)
         })
     }
-    
-    @objc func wmf_showKeepSavedArticlesOnDevicePanelIfNecessary(triggeredBy keepSavedArticlesTrigger: KeepSavedArticlesTrigger, theme: Theme, completion: @escaping (() -> Swift.Void) = {}) {
+
+    @objc(wmf_showKeepSavedArticlesOnDevicePanelIfNeededTriggeredBy:theme:completion:)
+    func wmf_showKeepSavedArticlesOnDevicePanelIfNeeded(triggeredBy keepSavedArticlesTrigger: KeepSavedArticlesTrigger, theme: Theme, completion: (() -> Swift.Void)? = nil) {
         guard self.hasSavedArticles() else {
-            completion()
+            completion?()
             return
         }
         
@@ -320,7 +337,7 @@ extension UIViewController {
             self.presentedViewController?.dismiss(animated: true, completion: nil)
         }
         let dismissHandler: ScrollableEducationPanelDismissHandler = {
-            completion()
+            completion?()
         }
         
         let panelVC = KeepSavedArticlesOnDevicePanelViewController(triggeredBy: keepSavedArticlesTrigger, showCloseButton: false, primaryButtonTapHandler: keepSavedArticlesOnDeviceTapHandler, secondaryButtonTapHandler: deleteSavedArticlesFromDeviceTapHandler, dismissHandler: dismissHandler, discardDismissHandlerOnPrimaryButtonTap: false, theme: theme)
@@ -333,4 +350,11 @@ extension UIViewController {
         present(panelVC, animated: true, completion: completion)
     }
 
+    @objc func wmf_showDescriptionPublishedPanelViewController(theme: Theme) {
+        let doneTapHandler: ScrollableEducationPanelButtonTapHandler = { sender in
+            self.dismiss(animated: true, completion: nil)
+        }
+        let panelVC = DescriptionPublishedPanelViewController(showCloseButton: true, primaryButtonTapHandler: doneTapHandler, secondaryButtonTapHandler: nil, dismissHandler: nil, theme: theme)
+        present(panelVC, animated: true, completion: nil)
+    }
 }

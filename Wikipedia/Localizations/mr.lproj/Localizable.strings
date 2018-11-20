@@ -100,7 +100,6 @@
 "hockeyapp-alert-privacy" = "$1 गुप्तता";
 "hockeyapp-alert-send-report" = "अहवाल पाठवा";
 "hockeyapp-alert-title" = "माफ करा, मागील वेळी अॲप क्रॲश झाले होते";
-"home-button-popover-title" = "मुख्य पानावर जाण्यासाठी येथे दाबा";
 "home-more-like-footer" = "अधिक $1 सारखे";
 // Fuzzy
 "home-nearby-footer" = "आपल्या जवळपासच्या ठिकाणांबाबत अधिक";
@@ -190,6 +189,7 @@
 "settings-my-languages" = "माझ्या भाषा";
 "settings-notifications" = "अधिसूचना";
 "settings-primary-language" = "प्राथमिक";
+// Fuzzy
 "settings-primary-language-details" = "या अॲपसाठी, यादीतील प्रथम भाषा ही प्राथमिक भाषा म्हणून वापरल्या जाते. ही भाषा बदलण्याने, शोधा वर दाखविलेले, रोजचे आशय  बदलतील(जसे अविशिष्ट लेख).";
 "settings-support" = "विकिपीडियास साहाय्य करा";
 "settings-title" = "मांडण्या";

@@ -1,17 +1,22 @@
 import UIKit
 
 protocol AddArticlesToReadingListDelegate: NSObjectProtocol {
-    func addArticlesToReadingList(_ addArticlesToReadingList: AddArticlesToReadingListViewController, willBeDismissed: Bool)
+    func addArticlesToReadingListWillBeClosed(_ addArticlesToReadingList: AddArticlesToReadingListViewController)
+    func addArticlesToReadingListDidDisappear(_ addArticlesToReadingList: AddArticlesToReadingListViewController)
     func addArticlesToReadingList(_ addArticlesToReadingList: AddArticlesToReadingListViewController, didAddArticles articles: [WMFArticle], to readingList: ReadingList)
 }
 
 extension AddArticlesToReadingListDelegate where Self: EditableCollection {
-    func addArticlesToReadingList(_ addArticlesToReadingList: AddArticlesToReadingListViewController, willBeDismissed: Bool) {
+    func addArticlesToReadingListWillBeClosed(_ addArticlesToReadingList: AddArticlesToReadingListViewController) {
         editController.close()
     }
     
     func addArticlesToReadingList(_ addArticlesToReadingList: AddArticlesToReadingListViewController, didAddArticles articles: [WMFArticle], to readingList: ReadingList) {
         editController.close()
+    }
+
+    func addArticlesToReadingListDidDisappear(_ addArticlesToReadingList: AddArticlesToReadingListViewController) {
+
     }
 }
 
@@ -22,7 +27,7 @@ class AddArticlesToReadingListViewController: ViewController {
     private let articles: [WMFArticle]
     public let moveFromReadingList: ReadingList?
 
-    private var readingListsViewController: ReadingListsViewController?
+    private let readingListsViewController: ReadingListsViewController
     public weak var delegate: AddArticlesToReadingListDelegate?
     
     @objc var eventLogAction: (() -> Void)?
@@ -31,6 +36,7 @@ class AddArticlesToReadingListViewController: ViewController {
         self.dataStore = dataStore
         self.articles = articles
         self.moveFromReadingList = moveFromReadingList
+        self.readingListsViewController = ReadingListsViewController(with: dataStore, articles: articles)
         super.init()
         self.theme = theme
     }
@@ -40,12 +46,29 @@ class AddArticlesToReadingListViewController: ViewController {
     }
     
     @objc private func closeButtonPressed() {
-        dismiss(animated: true, completion: nil)
-        delegate?.addArticlesToReadingList(self, willBeDismissed: true)
+        dismiss(animated: true)
+        delegate?.addArticlesToReadingListWillBeClosed(self)
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        delegate?.addArticlesToReadingListDidDisappear(self)
     }
     
-    @objc private func addButtonPressed() {
-        readingListsViewController?.createReadingList(with: articles, moveFromReadingList: moveFromReadingList)
+    @objc private func createNewReadingListButtonPressed() {
+        readingListsViewController.createReadingList(with: articles, moveFromReadingList: moveFromReadingList)
+    }
+
+    private var isCreateNewReadingListButtonViewHidden: Bool = false {
+        didSet {
+            if isCreateNewReadingListButtonViewHidden {
+                navigationBar.removeUnderNavigationBarView()
+                readingListsViewController.createNewReadingListButtonView.button.removeTarget(self, action: #selector(createNewReadingListButtonPressed), for: .touchUpInside)
+            } else {
+                readingListsViewController.createNewReadingListButtonView.button.addTarget(self, action: #selector(createNewReadingListButtonPressed), for: .touchUpInside)
+                navigationBar.addUnderNavigationBarView(readingListsViewController.createNewReadingListButtonView)
+            }
+        }
     }
     
     override func viewDidLoad() {
@@ -56,21 +79,24 @@ class AddArticlesToReadingListViewController: ViewController {
         navigationBar.displayType = .modal
         navigationBar.isBarHidingEnabled = false
         navigationBar.isUnderBarViewHidingEnabled = true
-
-        readingListsViewController = ReadingListsViewController(with: dataStore, articles: articles)
-        guard let readingListsViewController = readingListsViewController else {
-            return
-        }
-        readingListsViewController.apply(theme: theme)
-        readingListsViewController.createNewReadingListButtonView.addTarget(self, action: #selector(addButtonPressed), for: .touchUpInside)
-        navigationBar.addUnderNavigationBarView(readingListsViewController.createNewReadingListButtonView)
-        addChildViewController(readingListsViewController)
+        isCreateNewReadingListButtonViewHidden = readingListsViewController.isEmpty
+        addChild(readingListsViewController)
         view.wmf_addSubviewWithConstraintsToEdges(readingListsViewController.view)
-        readingListsViewController.didMove(toParentViewController: self)
+        readingListsViewController.didMove(toParent: self)
         readingListsViewController.delegate = self
+        scrollView = readingListsViewController.scrollView
         apply(theme: theme)
     }
+
+    // MARK: Themeable
+
+    override func apply(theme: Theme) {
+        super.apply(theme: theme)
+        readingListsViewController.apply(theme: theme)
+    }
 }
+
+// MARK: ReadingListsViewControllerDelegate
 
 extension AddArticlesToReadingListViewController: ReadingListsViewControllerDelegate {
     func readingListsViewController(_ readingListsViewController: ReadingListsViewController, didAddArticles articles: [WMFArticle], to readingList: ReadingList) {
@@ -83,8 +109,12 @@ extension AddArticlesToReadingListViewController: ReadingListsViewControllerDele
         }
         delegate?.addArticlesToReadingList(self, didAddArticles: articles, to: readingList)
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(200)) {
-            self.dismiss(animated: true, completion: nil)
+            self.dismiss(animated: true)
         }
         eventLogAction?()
+    }
+
+    func readingListsViewControllerDidChangeEmptyState(_ readingListsViewController: ReadingListsViewController, isEmpty: Bool) {
+        isCreateNewReadingListButtonViewHidden = isEmpty
     }
 }

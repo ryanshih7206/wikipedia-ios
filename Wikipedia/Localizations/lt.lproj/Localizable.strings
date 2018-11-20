@@ -53,7 +53,6 @@
 "article-languages-yours" = "Jūsų kalbos";
 "article-read-more-title" = "Skaityti daugiau";
 "article-unable-to-load-article" = "Nepavyko įkelti straipsnio.";
-"back" = "Atgal";
 "back-button-accessibility-label" = "Atgal";
 "button-done" = "Atlikta";
 "button-next" = "Kitas";
@@ -88,7 +87,9 @@
 "explore-most-read-more-list-title-for-date" = "Viršuje $1";
 "explore-nearby-heading" = "Artimos vietovės";
 "explore-nearby-placeholder-heading" = "Vietos";
+// Fuzzy
 "explore-nearby-placeholder-sub-heading-on-language-wikipedia" = "$1 Vikipedijoje";
+// Fuzzy
 "explore-nearby-placeholder-sub-heading-on-wikipedia" = "Vikipedijoje";
 "explore-nearby-sub-heading-your-location" = "Jūsų vieta";
 "explore-potd-heading" = "Dienos nuotrauka";
@@ -217,8 +218,6 @@
 "relative-date-hours-ago" = "{{PLURAL:$1|0=Neseniai|Prieš $1 valandą|Prieš $1 valandas|Prieš $1 valandų}}";
 "relative-date-minutes-ago" = "{{PLURAL:$1|0=Ką tik|Prieš $1 minutę|Prieš $1 minutes|Prieš $1 minučių}}";
 "relative-date-years-ago" = "{{PLURAL:$1|0=Šiais metais|Praeitais metais|Prieš $1 metus|Prieš $1 metų}}";
-"relogin-failed-retry-login-button-title" = "Bandyti prisijungti iš naujo";
-"relogin-failed-stay-logged-out-button-title" = "Palikite mane neprijungtą";
 "saved-all-articles-title" = "Visi straipsniai";
 "saved-title" = "Išsaugota";
 "search-did-you-mean" = "Galbūt norėjote ieškoti: $1?";
@@ -240,7 +239,6 @@
 "settings-primary-language" = "Pagrindinis";
 "settings-support" = "Paremti Vikipediją";
 "settings-title" = "Nustatymai";
-"share-a-fact-share-menu-item" = "Dalintis faktu…";
 "share-custom-menu-item" = "Dalintis...";
 "share-get-directions-in-maps" = "Gauti Nuorodas";
 "share-on-twitter-sign-off" = "per @Wikipedia";

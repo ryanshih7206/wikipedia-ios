@@ -25,7 +25,7 @@ public class NewsCollectionViewCell: SideScrollingCollectionViewCell {
             descriptionLabel.text = nil
             return
         }
-        let attributedString = descriptionHTML.wmf_attributedStringFromHTML(with: descriptionFont, boldFont: descriptionLinkFont, italicFont: descriptionFont, boldItalicFont: descriptionLinkFont, withAdditionalBoldingForMatchingSubstring:nil, boldLinks: true).wmf_trim()
+        let attributedString = descriptionHTML.wmf_attributedStringFromHTML(with: descriptionFont, boldFont: descriptionLinkFont, italicFont: descriptionFont, boldItalicFont: descriptionLinkFont, withAdditionalBoldingForMatchingSubstring:nil, tagMapping: ["a":"b"], additionalTagAttributes: nil).wmf_trim()
         descriptionLabel.attributedText = attributedString
     }
     
@@ -39,6 +39,6 @@ public class NewsCollectionViewCell: SideScrollingCollectionViewCell {
 public class NewsExploreCollectionViewCell: NewsCollectionViewCell {
     public override func apply(theme: Theme) {
         super.apply(theme: theme)
-        setBackgroundColors(theme.colors.cardBackground, selected: theme.colors.cardBackground)
+        setBackgroundColors(theme.colors.cardBackground, selected: theme.colors.selectedCardBackground)
     }
 }

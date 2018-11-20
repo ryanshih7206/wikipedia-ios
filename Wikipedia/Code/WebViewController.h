@@ -22,6 +22,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, nullable, readonly) WKWebView *webView;
 
 @property (nonatomic) CGFloat contentWidthPercentage;
+
+@property (nonatomic, getter=isHeaderFadingEnabled) BOOL headerFadingEnabled;
+
 @property (nonatomic, readonly) CGFloat marginWidth;
 
 @property (nonatomic, readonly) WMFTheme *theme;
@@ -83,6 +86,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)webViewController:(WebViewController *)controller scrollViewShouldScrollToTop:(UIScrollView *)scrollView;
 - (void)webViewController:(WebViewController *)controller didTapFooterMenuItem:(WMFArticleFooterMenuItem)item payload:(NSArray *)payload;
 - (void)webViewController:(WebViewController *)controller didTapFooterReadMoreSaveForLaterForArticleURL:(NSURL *)url didSave:(BOOL)didSave;
+- (void)webViewController:(WebViewController *)controller didTapAddTitleDescriptionForArticle:(MWKArticle *)article;
 
 @end
 

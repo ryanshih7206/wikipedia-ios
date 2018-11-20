@@ -43,22 +43,14 @@ NS_ASSUME_NONNULL_BEGIN
                                                      }];
     } else if (self.navigationController != nil) {
         [self.navigationController pushViewController:viewController animated:animated];
-    } else if ([[self.childViewControllers firstObject] isKindOfClass:[UITabBarController class]]) {
-        UITabBarController *tab = (UITabBarController *)[self.childViewControllers firstObject];
-        UINavigationController *nav = [tab selectedViewController];
-        [nav pushViewController:viewController animated:animated];
-    } else {
-        NSAssert(false, @"Unexpected view controller hierarchy");
+    } else if ([self isKindOfClass:[UINavigationController class]]) {
+        [(UINavigationController *)self pushViewController:viewController animated:animated];
     }
 }
 
 - (void)wmf_pushViewController:(UIViewController *)viewController animated:(BOOL)animated {
     if (self.navigationController != nil) {
         [self.navigationController pushViewController:viewController animated:animated];
-    } else if ([[self.childViewControllers firstObject] isKindOfClass:[UITabBarController class]]) {
-        UITabBarController *tab = (UITabBarController *)[self.childViewControllers firstObject];
-        UINavigationController *nav = [tab selectedViewController];
-        [nav pushViewController:viewController animated:animated];
     } else if (self.presentingViewController != nil) {
         UIViewController *presentingViewController = self.presentingViewController;
         [presentingViewController dismissViewControllerAnimated:YES
@@ -67,8 +59,8 @@ NS_ASSUME_NONNULL_BEGIN
                                                      }];
     } else if (self.parentViewController != nil) {
         [self.parentViewController wmf_pushViewController:viewController animated:animated];
-    } else {
-        NSAssert(0, @"Unexpected view controller hierarchy");
+    } else if ([self isKindOfClass:[UINavigationController class]]) {
+        [(UINavigationController *)self pushViewController:viewController animated:animated];
     }
 }
 

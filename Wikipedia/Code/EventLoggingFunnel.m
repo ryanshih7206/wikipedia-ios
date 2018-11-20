@@ -3,6 +3,7 @@
 #import <WMF/WMF-Swift.h>
 
 EventLoggingCategory const EventLoggingCategoryFeed = @"feed";
+EventLoggingCategory const EventLoggingCategoryFeedDetail = @"feed_detail";
 EventLoggingCategory const EventLoggingCategoryHistory = @"history";
 EventLoggingCategory const EventLoggingCategoryPlaces = @"places";
 EventLoggingCategory const EventLoggingCategoryArticle = @"article";
@@ -33,6 +34,8 @@ EventLoggingLabel const EventLoggingLabelLogin = @"login";
 EventLoggingLabel const EventLoggingLabelSyncArticle = @"sync_article";
 EventLoggingLabel const EventLoggingLabelLocation = @"location";
 EventLoggingLabel const EventLoggingLabelMainPage = @"main_page";
+EventLoggingLabel const EventLoggingLabelContinueReading = @"continue_reading";
+EventLoggingLabel const EventLoggingLabelPictureOfTheDay = @"picture_of_the_day";
 
 @implementation EventLoggingFunnel
 
@@ -120,10 +123,10 @@ EventLoggingLabel const EventLoggingLabelMainPage = @"main_page";
  *  @return integer sampling id
  */
 - (NSInteger)getEventLogSamplingID {
-    NSNumber *samplingId = [[NSUserDefaults wmf_userDefaults] objectForKey:@"EventLogSamplingID"];
+    NSNumber *samplingId = [[NSUserDefaults wmf] objectForKey:@"EventLogSamplingID"];
     if (!samplingId) {
         NSInteger intId = arc4random_uniform(UINT32_MAX);
-        [[NSUserDefaults wmf_userDefaults] setInteger:intId forKey:@"EventLogSamplingID"];
+        [[NSUserDefaults wmf] setInteger:intId forKey:@"EventLogSamplingID"];
         return intId;
     } else {
         return samplingId.integerValue;

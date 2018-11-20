@@ -8,96 +8,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @implementation WMFContentGroup (WMFContentManaging)
 
-#pragma mark - In The News
-
-- (nullable NSString *)headerIconName {
-    switch (self.contentGroupKind) {
-        case WMFContentGroupKindContinueReading:
-            return @"home-continue-reading-mini";
-        case WMFContentGroupKindMainPage:
-            return @"today-mini";
-        case WMFContentGroupKindRelatedPages:
-            return @"recent-mini";
-        case WMFContentGroupKindLocation:
-            return @"nearby-mini";
-        case WMFContentGroupKindLocationPlaceholder:
-            return @"nearby-mini";
-        case WMFContentGroupKindPictureOfTheDay:
-            return @"potd-mini";
-        case WMFContentGroupKindRandom:
-            return @"random-mini";
-        case WMFContentGroupKindFeaturedArticle:
-            return @"featured-mini";
-        case WMFContentGroupKindTopRead:
-            return @"trending-mini";
-        case WMFContentGroupKindNews:
-            return @"in-the-news-mini";
-        case WMFContentGroupKindOnThisDay:
-            return @"on-this-day-mini";
-        default:
-            break;
-    }
-    return nil;
-}
-
-- (nullable UIImage *)headerIcon {
-    static dispatch_once_t onceToken;
-    static NSMutableDictionary<NSString *, UIImage *> *headerIcons;
-    dispatch_once(&onceToken, ^{
-        headerIcons = [NSMutableDictionary dictionaryWithCapacity:12];
-    });
-    NSString *name = [self headerIconName];
-    if (!name) {
-        return nil;
-    }
-    UIImage *image = headerIcons[name];
-    if (!image) {
-        image = [UIImage imageNamed:name];
-        headerIcons[name] = image;
-    }
-    return image;
-}
-
-- (nullable UIColor *)headerIconTintColor {
-    switch (self.contentGroupKind) {
-        case WMFContentGroupKindLocationPlaceholder:
-        case WMFContentGroupKindLocation:
-            return [UIColor wmf_green];
-        case WMFContentGroupKindPictureOfTheDay:
-            return [UIColor wmf_purple];
-        case WMFContentGroupKindRandom:
-            return [UIColor wmf_red];
-        case WMFContentGroupKindFeaturedArticle:
-            return [UIColor wmf_yellow];
-        case WMFContentGroupKindTopRead:
-            return [UIColor wmf_blue];
-        case WMFContentGroupKindOnThisDay:
-            return [UIColor wmf_blue];
-        default:
-            return [UIColor wmf_lightGray];
-    }
-}
-
-- (nullable UIColor *)headerIconBackgroundColor {
-    switch (self.contentGroupKind) {
-        case WMFContentGroupKindLocationPlaceholder:
-        case WMFContentGroupKindLocation:
-            return [UIColor wmf_lightGreen];
-        case WMFContentGroupKindPictureOfTheDay:
-            return [UIColor wmf_lightPurple];
-        case WMFContentGroupKindRandom:
-            return [UIColor wmf_lightRed];
-        case WMFContentGroupKindFeaturedArticle:
-            return [UIColor wmf_lightYellow];
-        case WMFContentGroupKindOnThisDay:
-            return [UIColor wmf_lightBlue];
-        case WMFContentGroupKindTopRead:
-            return [UIColor wmf_lightBlue];
-        default:
-            return [UIColor wmf_lightestGray];
-    }
-}
-
 - (nullable NSString *)headerTitle {
     switch (self.contentGroupKind) {
         case WMFContentGroupKindContinueReading:
@@ -158,7 +68,7 @@ NS_ASSUME_NONNULL_BEGIN
             break;
         case WMFContentGroupKindLocation: {
             if (self.isForToday) {
-                return WMFLocalizedStringWithDefaultValue(@"explore-nearby-sub-heading-your-location", nil, nil, @"Your location", @"Subtext beneath the 'Places near' header when showing articles near the user's current location.");
+                return [self stringWithLocalizedCurrentSiteLanguageReplacingPlaceholderInString:WMFLocalizedStringWithDefaultValue(@"explore-nearby-sub-heading-your-location-from-language-wikipedia", nil, nil, @"Your location from %1$@ Wikipedia", @"Subtext beneath the 'Places near' header when showing articles near the user's current location. %1$@ will be replaced with the language - for example, 'Your location from English Wikipedia'") fallingBackOnGenericString:WMFLocalizedStringWithDefaultValue(@"explore-nearby-sub-heading-your-location", nil, nil, @"Your location", @"Subtext beneath the 'Places near' header when showing articles near the user's current location.")];
             } else if (self.placemark) {
                 return [NSString stringWithFormat:@"%@, %@", self.placemark.name, self.placemark.locality];
             } else {
@@ -166,7 +76,7 @@ NS_ASSUME_NONNULL_BEGIN
             }
         } break;
         case WMFContentGroupKindLocationPlaceholder:
-            return [self stringWithLocalizedCurrentSiteLanguageReplacingPlaceholderInString:WMFLocalizedStringWithDefaultValue(@"explore-nearby-placeholder-sub-heading-on-language-wikipedia", nil, nil, @"On %1$@ Wikipedia", @"Subtext beneath the 'Places' header when describing which specific Wikipedia. %1$@ will be replaced with the language - for example, 'On English Wikipedia'") fallingBackOnGenericString:WMFLocalizedStringWithDefaultValue(@"explore-nearby-placeholder-sub-heading-on-wikipedia", nil, nil, @"On Wikipedia", @"Subtext beneath the 'Places' header when the specific language wikipedia is unknown.")];
+            return [self stringWithLocalizedCurrentSiteLanguageReplacingPlaceholderInString:WMFLocalizedStringWithDefaultValue(@"explore-nearby-placeholder-sub-heading-on-language-wikipedia", nil, nil, @"From %1$@ Wikipedia", @"Subtext beneath the 'Places' header when describing which specific Wikipedia. %1$@ will be replaced with the language - for example, 'From English Wikipedia'") fallingBackOnGenericString:WMFLocalizedStringWithDefaultValue(@"explore-nearby-placeholder-sub-heading-on-wikipedia", nil, nil, @"From Wikipedia", @"Subtext beneath the 'Places' header when the specific language wikipedia is unknown.")];
         case WMFContentGroupKindPictureOfTheDay:
             return WMFLocalizedStringWithDefaultValue(@"explore-potd-sub-heading", nil, nil, @"From Wikimedia Commons", @"Subtext beneath the 'Picture of the day' header.");
         case WMFContentGroupKindRandom:
@@ -178,8 +88,15 @@ NS_ASSUME_NONNULL_BEGIN
         }
         case WMFContentGroupKindNews:
             return [self stringWithLocalizedCurrentSiteLanguageReplacingPlaceholderInString:WMFLocalizedStringWithDefaultValue(@"in-the-news-sub-title-from-language-wikipedia", nil, nil, @"From %1$@ Wikipedia", @"Subtext beneath the 'In the news' header when describing which specific Wikipedia. %1$@ will be replaced with the language - for example, 'From English Wikipedia'") fallingBackOnGenericString:WMFLocalizedStringWithDefaultValue(@"in-the-news-sub-title-from-wikipedia", nil, nil, @"From Wikipedia", @"Subtext beneath the 'In the news' header when the specific language wikipedia is unknown.")];
-        case WMFContentGroupKindOnThisDay:
-            return [self localDateDisplayString];
+        case WMFContentGroupKindOnThisDay: {
+            NSString *language = [[NSLocale currentLocale] wmf_localizedLanguageNameForCode:self.siteURL.wmf_language];
+            if (language) {
+                return
+                    [NSString localizedStringWithFormat:WMFLocalizedStringWithDefaultValue(@"on-this-day-sub-title-for-date-from-language-wikipedia", nil, nil, @"%1$@ from %2$@ Wikipedia", @"Subtext beneath the 'On this day' header when describing the date and which specific Wikipedia. %1$@ will be substituted with the date. %2$@ will be replaced with the language - for example, 'June 8th from English Wikipedia'"), [[NSDateFormatter wmf_utcMonthNameDayOfMonthNumberDateFormatter] stringFromDate:self.midnightUTCDate], language];
+            } else {
+                return [[NSDateFormatter wmf_utcMonthNameDayOfMonthNumberDateFormatter] stringFromDate:self.midnightUTCDate];
+            }
+        }
         default:
             break;
     }
@@ -364,13 +281,6 @@ NS_ASSUME_NONNULL_BEGIN
                 return [NSString localizedStringWithFormat:WMFLocalizedStringWithDefaultValue(@"home-nearby-location-footer", nil, nil, @"More nearby %1$@", @"Footer for presenting user option to see longer list of articles nearby a specific location. %1$@ will be replaced with the name of the location"), self.placemark.name];
             }
         }
-        case WMFContentGroupKindLocationPlaceholder: {
-            if (self.isForToday) {
-                return [WMFCommonStrings nearbyFooterTitle];
-            } else {
-                return [NSString localizedStringWithFormat:WMFLocalizedStringWithDefaultValue(@"home-nearby-location-footer", nil, nil, @"More nearby %1$@", @"Footer for presenting user option to see longer list of articles nearby a specific location. %1$@ will be replaced with the name of the location"), self.placemark.name];
-            }
-        }
         case WMFContentGroupKindPictureOfTheDay:
             break;
         case WMFContentGroupKindRandom:
@@ -381,14 +291,8 @@ NS_ASSUME_NONNULL_BEGIN
             return WMFLocalizedStringWithDefaultValue(@"explore-most-read-footer", nil, nil, @"All top read articles", @"Text which shown on the footer beneath 'Most read articles', which presents a longer list of 'most read' articles for a given date when tapped.");
         case WMFContentGroupKindNews:
             return WMFLocalizedStringWithDefaultValue(@"home-news-footer", nil, nil, @"More current events", @"Footer for presenting user option to see longer list of news stories.");
-        case WMFContentGroupKindOnThisDay: {
-            unsigned long long countOfEvents = [self.countOfFullContent unsignedLongLongValue];
-            if (countOfEvents > 0) {
-                return [NSString localizedStringWithFormat:WMFLocalizedStringWithDefaultValue(@"on-this-day-footer-with-event-count", nil, nil, @"%1$@ more historical events on this day", @"Footer for presenting user option to see longer list of 'On this day' articles. %1$@ will be substituted with the number of events"), @(countOfEvents)];
-            } else {
-                return WMFLocalizedStringWithDefaultValue(@"on-this-day-footer", nil, nil, @"More historical events on this day", @"Footer for presenting user option to see longer list of 'On this day' articles. %1$@ will be substituted with the number of events");
-            }
-        }
+        case WMFContentGroupKindOnThisDay:
+            return WMFLocalizedStringWithDefaultValue(@"on-this-day-footer", nil, nil, @"More historical events on this day", @"Footer for presenting user option to see longer list of 'On this day' articles. %1$@ will be substituted with the number of events");
         case WMFContentGroupKindUnknown:
         default:
             break;
@@ -503,10 +407,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSString *)topReadMoreTitleForDate:(NSDate *)date {
     return
         [NSString localizedStringWithFormat:WMFLocalizedStringWithDefaultValue(@"explore-most-read-more-list-title-for-date", nil, nil, @"Top on %1$@", @"Title with date for the view displaying longer list of top read articles. %1$@ will be substituted with the date"), [[NSDateFormatter wmf_utcShortDayNameShortMonthNameDayOfMonthNumberDateFormatter] stringFromDate:date]];
-}
-
-- (NSString *)localDateDisplayString {
-    return [[NSDateFormatter wmf_utcMonthNameDayOfMonthNumberDateFormatter] stringFromDate:self.midnightUTCDate];
 }
 
 @end

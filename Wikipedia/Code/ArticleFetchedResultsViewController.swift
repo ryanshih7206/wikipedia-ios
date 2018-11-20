@@ -19,9 +19,7 @@ class ArticleFetchedResultsViewController: ArticleCollectionViewController, Coll
     }
     
     override func article(at indexPath: IndexPath) -> WMFArticle? {
-        guard let sections = fetchedResultsController.sections,
-            indexPath.section < sections.count,
-            indexPath.item < sections[indexPath.section].numberOfObjects else {
+        guard fetchedResultsController.isValidIndexPath(indexPath) else {
                 return nil
         }
         return fetchedResultsController.object(at: indexPath)
@@ -95,9 +93,9 @@ class ArticleFetchedResultsViewController: ArticleCollectionViewController, Coll
         super.isEmptyDidChange()
         updateDeleteButton()
     }
-    
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
         editController.close()
     }
     

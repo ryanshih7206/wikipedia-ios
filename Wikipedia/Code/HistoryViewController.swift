@@ -1,11 +1,8 @@
 import UIKit
 import WMF
 
-fileprivate let headerReuseIdentifier = "org.wikimedia.history_header"
-
 @objc(WMFHistoryViewController)
 class HistoryViewController: ArticleFetchedResultsViewController {
-    var headerLayoutEstimate: ColumnarCollectionViewLayoutHeightEstimate?
 
     override func setupFetchedResultsController(with dataStore: MWKDataStore) {
         let articleRequest = WMFArticle.fetchRequest()
@@ -23,17 +20,12 @@ class HistoryViewController: ArticleFetchedResultsViewController {
         emptyViewType = .noHistory
         
         title = CommonStrings.historyTabTitle
-        layoutManager.register(CollectionViewHeader.self, forSupplementaryViewOfKind: UICollectionElementKindSectionHeader, withReuseIdentifier: headerReuseIdentifier, addPlaceholder: true)
         
         deleteAllButtonText = WMFLocalizedString("history-clear-all", value: "Clear", comment: "Text of the button shown at the top of history which deletes all history\n{{Identical|Clear}}")
         deleteAllConfirmationText =  WMFLocalizedString("history-clear-confirmation-heading", value: "Are you sure you want to delete all your recent items?", comment: "Heading text of delete all confirmation dialog")
         deleteAllCancelText = WMFLocalizedString("history-clear-cancel", value: "Cancel", comment: "Button text for cancelling delete all action\n{{Identical|Cancel}}")
         deleteAllText = WMFLocalizedString("history-clear-delete-all", value: "Yes, delete all", comment: "Button text for confirming delete all action")
         isDeleteAllVisible = true
-    }
-    
-    override var analyticsName: String {
-        return "Recent"
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -57,7 +49,10 @@ class HistoryViewController: ArticleFetchedResultsViewController {
     
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
-        headerLayoutEstimate = nil
+    }
+    
+    override var headerStyle: ColumnarCollectionViewController.HeaderStyle {
+        return .sections
     }
 
     func titleForHeaderInSection(_ section: Int) -> String? {
@@ -72,19 +67,11 @@ class HistoryViewController: ArticleFetchedResultsViewController {
         return ((date as NSDate).wmf_midnightUTCDateFromLocal as NSDate).wmf_localizedRelativeDateFromMidnightUTCDate()
     }
     
-    func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
-        guard kind == UICollectionElementKindSectionHeader else {
-            return UICollectionReusableView()
-        }
-        let view = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: headerReuseIdentifier, for: indexPath)
-        guard let headerView = view as? CollectionViewHeader else {
-            return view
-        }
-        headerView.style = .history
-        headerView.title = titleForHeaderInSection(indexPath.section)
-        headerView.apply(theme: theme)
-        headerView.layoutMargins = layout.itemLayoutMargins
-        return headerView
+    override func configure(header: CollectionViewHeader, forSectionAt sectionIndex: Int, layoutOnly: Bool) {
+        header.style = .history
+        header.title = titleForHeaderInSection(sectionIndex)
+        header.apply(theme: theme)
+        header.layoutMargins = layout.itemLayoutMargins
     }
 
     override func collectionViewUpdater<T>(_ updater: CollectionViewUpdater<T>, didUpdate collectionView: UICollectionView) {
@@ -93,8 +80,8 @@ class HistoryViewController: ArticleFetchedResultsViewController {
     }
 
     func updateVisibleHeaders() {
-        for indexPath in collectionView.indexPathsForVisibleSupplementaryElements(ofKind: UICollectionElementKindSectionHeader) {
-            guard let headerView = collectionView.supplementaryView(forElementKind: UICollectionElementKindSectionHeader, at: indexPath) as? CollectionViewHeader else {
+        for indexPath in collectionView.indexPathsForVisibleSupplementaryElements(ofKind: UICollectionView.elementKindSectionHeader) {
+            guard let headerView = collectionView.supplementaryView(forElementKind: UICollectionView.elementKindSectionHeader, at: indexPath) as? CollectionViewHeader else {
                 continue
             }
             headerView.title = titleForHeaderInSection(indexPath.section)
@@ -103,25 +90,6 @@ class HistoryViewController: ArticleFetchedResultsViewController {
     
     override var eventLoggingCategory: EventLoggingCategory {
         return .history
-    }
-    
-    // MARK: - ColumnarCollectionViewLayoutDelegate
-    override func collectionView(_ collectionView: UICollectionView, estimatedHeightForHeaderInSection section: Int, forColumnWidth columnWidth: CGFloat) -> ColumnarCollectionViewLayoutHeightEstimate {
-        if let estimate = headerLayoutEstimate {
-            return estimate
-        }
-        var estimate = ColumnarCollectionViewLayoutHeightEstimate(precalculated: false, height: 67)
-        guard let placeholder = layoutManager.placeholder(forSupplementaryViewOfKind: UICollectionElementKindSectionHeader, withReuseIdentifier: headerReuseIdentifier) as? CollectionViewHeader else {
-            return estimate
-        }
-        let title = titleForHeaderInSection(section)
-        placeholder.prepareForReuse()
-        placeholder.style = .history
-        placeholder.title = title
-        estimate.height = placeholder.sizeThatFits(CGSize(width: columnWidth, height: UIViewNoIntrinsicMetric)).height
-        estimate.precalculated = true
-        headerLayoutEstimate = estimate
-        return estimate
     }
 }
 

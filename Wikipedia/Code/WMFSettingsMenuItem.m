@@ -56,15 +56,15 @@
                                            disclosureText:[[[MWKLanguageLinkController sharedInstance] appLanguage].languageCode uppercaseString]
                                                isSwitchOn:NO];
         }
-        case WMFSettingsMenuItemType_SearchLanguageBarVisibility: {
+        case WMFSettingsMenuItemType_Search: {
             return
                 [[WMFSettingsMenuItem alloc] initWithType:type
-                                                    title:WMFLocalizedStringWithDefaultValue(@"settings-language-bar", nil, nil, @"Show languages on search", @"Title in Settings for toggling the display the language bar in the search view")
+                                                    title:[WMFCommonStrings searchTitle]
                                                  iconName:@"settings-search"
                                                 iconColor:[UIColor wmf_green]
-                                           disclosureType:WMFSettingsMenuItemDisclosureType_Switch
+                                           disclosureType:WMFSettingsMenuItemDisclosureType_ViewController
                                            disclosureText:nil
-                                               isSwitchOn:[[NSUserDefaults wmf_userDefaults] wmf_showSearchLanguageBar]];
+                                               isSwitchOn:NO];
         }
         case WMFSettingsMenuItemType_ExploreFeed: {
             return
@@ -73,13 +73,13 @@
                                                  iconName:@"settings-explore"
                                                 iconColor:[UIColor wmf_colorWithHex:0x5ac8fa]
                                            disclosureType:WMFSettingsMenuItemDisclosureType_ViewControllerWithDisclosureText
-                                           disclosureText:[NSUserDefaults wmf_userDefaults].defaultTabType != WMFAppDefaultTabTypeExplore ? @"Off" : @"On"
+                                           disclosureText:[NSUserDefaults wmf].defaultTabType != WMFAppDefaultTabTypeExplore ? @"Off" : @"On"
                                                isSwitchOn:NO];
         }
         case WMFSettingsMenuItemType_Notifications: {
             return
                 [[WMFSettingsMenuItem alloc] initWithType:type
-                                                    title:WMFLocalizedStringWithDefaultValue(@"settings-notifications", nil, nil, @"Notifications", @"Title for button letting user choose notifications settings.\n{{Identical|Notification}}")
+                                                    title:[WMFCommonStrings notifications]
                                                  iconName:@"settings-notifications"
                                                 iconColor:[UIColor wmf_colorWithHex:0xFF1B33]
                                            disclosureType:WMFSettingsMenuItemDisclosureType_ViewController

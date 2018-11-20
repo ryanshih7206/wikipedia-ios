@@ -27,6 +27,7 @@ class ArticleLocationCollectionViewCell: ArticleCollectionViewCell {
         titleTextStyle = .georgiaTitle3
         descriptionTextStyle = .subheadline
         imageViewDimension = 72
+        imageView.image = #imageLiteral(resourceName: "compass-w")
     }
     
     override func updateFonts(with traitCollection: UITraitCollection) {
@@ -41,17 +42,16 @@ class ArticleLocationCollectionViewCell: ArticleCollectionViewCell {
     }
     
     override open func sizeThatFits(_ size: CGSize, apply: Bool) -> CGSize {
-        let size: CGSize = super.sizeThatFits(size, apply: apply)
-        let isLTR: Bool = articleSemanticContentAttribute != .forceRightToLeft
+        let size = super.sizeThatFits(size, apply: apply)
+        let isLTR = articleSemanticContentAttribute != .forceRightToLeft
 
-        let layoutMargins: UIEdgeInsets = calculatedLayoutMargins
+        let layoutMargins = calculatedLayoutMargins
         
-        let minHeight: CGFloat = compassViewDimension + layoutMargins.top + layoutMargins.bottom
-        //let minHeightMinusMargins: CGFloat = minHeight - layoutMargins.top - layoutMargins.bottom
-        
-        let widthForLabels: CGFloat = size.width - layoutMargins.left - layoutMargins.right - compassViewDimension - spacing
+        let minHeight = compassViewDimension
+        let hSpaceBetweenCompassAndLabels: CGFloat = 10
+        let widthForLabels = size.width - layoutMargins.left - compassViewDimension - hSpaceBetweenCompassAndLabels - layoutMargins.right
 
-        let x: CGFloat = isLTR ? layoutMargins.left + compassViewDimension + spacing : layoutMargins.left
+        let x = isLTR ? layoutMargins.left + compassViewDimension + hSpaceBetweenCompassAndLabels : layoutMargins.left
        
         var origin = CGPoint(x: x, y: layoutMargins.top)
         
@@ -67,17 +67,17 @@ class ArticleLocationCollectionViewCell: ArticleCollectionViewCell {
             descriptionLabel.isHidden = true
         }
         
-        let distanceLabelPadding = UIEdgeInsetsMake(-2, -5, -2, -5)
-        let distanceLabelFrame = distanceLabel.wmf_preferredFrame(at: CGPoint(x: origin.x - distanceLabelPadding.left, y: origin.y - distanceLabelPadding.top), maximumWidth: widthForLabels, alignedBy: articleSemanticContentAttribute, apply: apply)
-        origin.y += distanceLabelFrame.layoutHeight(with: spacing)
+        let distanceLabelHorizontalPadding: CGFloat = 5
+        let distanceLabelVerticalPadding: CGFloat = 5
+        let distanceLabelExtraTopMargin: CGFloat = 3
+        let distanceLabelFrame = distanceLabel.wmf_preferredFrame(at: CGPoint(x: origin.x + distanceLabelHorizontalPadding, y: origin.y + distanceLabelVerticalPadding + distanceLabelExtraTopMargin), maximumWidth: widthForLabels - 2 * distanceLabelHorizontalPadding, alignedBy: articleSemanticContentAttribute, apply: apply)
+
+        let distanceLabelBackgroundFrame = distanceLabelFrame.inset(by: UIEdgeInsets(top: 0 - distanceLabelVerticalPadding, left: 0 - distanceLabelHorizontalPadding, bottom: 0 - distanceLabelVerticalPadding, right: 0 - distanceLabelHorizontalPadding))
+
+        origin.y += distanceLabelBackgroundFrame.height + distanceLabelExtraTopMargin + spacing
+
         if apply {
-            distanceLabelBackground.frame = UIEdgeInsetsInsetRect(distanceLabelFrame, distanceLabelPadding)
-        }
-        
-        if !isSaveButtonHidden {
-            origin.y += spacing
-            let saveButtonFrame = saveButton.wmf_preferredFrame(at: origin, maximumWidth: widthForLabels, alignedBy: articleSemanticContentAttribute, apply: apply)
-            origin.y += saveButtonFrame.height - 2 * saveButton.verticalPadding + spacing
+            distanceLabelBackground.frame = distanceLabelBackgroundFrame
         }
         
         origin.y += layoutMargins.bottom
@@ -117,9 +117,9 @@ class ArticleLocationCollectionViewCell: ArticleCollectionViewCell {
     
     override func apply(theme: Theme) {
         super.apply(theme: theme)
-        imageView.backgroundColor = theme.colors.midBackground
+        imageView.backgroundColor = .wmf_green
         distanceLabel.textColor = theme.colors.secondaryText
-        distanceLabelBackground.layer.borderColor = theme.colors.secondaryText.cgColor
+        distanceLabelBackground.layer.borderColor = theme.colors.distanceBorder.cgColor
         compassView.lineColor = theme.colors.accent
     }
 }
@@ -127,6 +127,6 @@ class ArticleLocationCollectionViewCell: ArticleCollectionViewCell {
 class ArticleLocationExploreCollectionViewCell: ArticleLocationCollectionViewCell {
     override open func apply(theme: Theme) {
         super.apply(theme: theme)
-        setBackgroundColors(theme.colors.cardBackground, selected: theme.colors.cardBackground)
+        setBackgroundColors(theme.colors.cardBackground, selected: theme.colors.selectedCardBackground)
     }
 }

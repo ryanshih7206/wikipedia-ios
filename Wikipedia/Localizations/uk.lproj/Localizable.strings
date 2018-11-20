@@ -13,6 +13,7 @@
 // Author: SimondR
 // Author: Sir-nik
 // Author: Visem
+// Author: Vlad5250
 // Author: Ата
 // Author: Дар'я Козлова
 
@@ -73,7 +74,6 @@
 "article-share" = "Поділитися";
 "article-unable-to-load-article" = "Не вдається завантажити статтю.";
 "article-unable-to-load-section" = "Не вдається завантажити цей розділ. Спробуйте оновити статтю, і глянути, чи це вирішить проблему.";
-"back" = "Назад";
 "back-button-accessibility-label" = "Назад";
 "button-done" = "Готово";
 "button-next" = "Далі";
@@ -128,8 +128,9 @@
 "explore-most-read-more-list-title-for-date" = "Найбільш читане на $1";
 "explore-nearby-heading" = "Місця поблизу";
 "explore-nearby-placeholder-heading" = "Місця";
+// Fuzzy
 "explore-nearby-placeholder-sub-heading-on-language-wikipedia" = "У Вікіпедії мовою «$1»";
-"explore-nearby-placeholder-sub-heading-on-wikipedia" = "У Вікіпедії";
+"explore-nearby-placeholder-sub-heading-on-wikipedia" = "З Вікіпедії";
 "explore-nearby-sub-heading-your-location" = "Ваше місце розташування";
 "explore-potd-heading" = "Зображення дня";
 "explore-random-article-heading" = "Випадкова стаття";
@@ -181,8 +182,7 @@
 "home-button-history-accessibility-label" = "Вікіпедія, повернутися до Історії";
 "home-button-saved-accessibility-label" = "Вікіпедія, повернутися до Збереженого";
 "home-more-like-footer" = "Більше схоже на $1";
-// Fuzzy
-"home-nearby-footer" = "Більше про те, що неподалік від вас";
+"home-nearby-footer" = "Більше місць поблизу";
 "home-nearby-location-footer" = "Більше поблизу $1";
 "home-themes-action-title" = "Керування налаштуваннями";
 "home-title" = "Досліджуйте";
@@ -203,6 +203,10 @@
 "languages-wikipedia" = "Мови Вікіпедії";
 "license-footer-name" = "CC-BY-SA 3.0";
 "license-footer-text" = "Вміст доступний на умовах $1, якщо не вказано інше.";
+"logged-out-continue-without-logging-in-button-title" = "Продовжити без входу";
+"logged-out-log-back-in-button-title" = "Назад до входу з обліковим записом";
+"logged-out-subtitle" = "Відбулася помилка при аутентифікації вашого облікового запису. Вам потрібно повторно увійти, щоб можливо було узгодити списки для читання і редагувати під вашим ім'ям користувача.";
+"logged-out-title" = "Ви вийшли із системи";
 "login-forgot-password" = "Забули свій пароль?";
 "login-join-wikipedia" = "Приєднуйтесь до Вікіпедії.";
 "login-no-account" = "Не маєте облікового запису? $1";
@@ -301,10 +305,10 @@
 "settings-notifications-system-turn-on" = "Увімкнути сповіщення";
 "settings-notifications-trending" = "В тренді поточних подій";
 "settings-primary-language" = "Основний";
+// Fuzzy
 "settings-primary-language-details" = "Перша мова в цьому списку використовується як основна мова додатку. Зміна цієї мови буде змінювати щоденний контент, наприклад обрані статті.";
 "settings-support" = "Підтримати Вікіпедію";
 "settings-title" = "Налаштування";
-"share-a-fact-share-menu-item" = "Поділіться фактом";
 "share-article-name-on-wikipedia" = "«$1» в @Wikipedia:";
 "share-custom-menu-item" = "Поділитися...";
 "share-get-directions-in-maps" = "Отримати напрямки";

@@ -61,15 +61,11 @@ class SavedArticlesViewController: ColumnarCollectionViewController, EditableCol
         }
     }
     
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        editController.close()
-    }
-    
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         collectionViewUpdater = nil
         fetchedResultsController = nil
+        editController.close()
     }
     
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -115,10 +111,7 @@ class SavedArticlesViewController: ColumnarCollectionViewController, EditableCol
     }
     
     private func article(at indexPath: IndexPath) -> WMFArticle? {
-        guard let fetchedResultsController = fetchedResultsController,
-            let sections = fetchedResultsController.sections,
-            indexPath.section < sections.count,
-            indexPath.item < sections[indexPath.section].numberOfObjects else {
+        guard let fetchedResultsController = fetchedResultsController, fetchedResultsController.isValidIndexPath(indexPath) else {
                 return nil
         }
         return fetchedResultsController.object(at: indexPath)
@@ -145,7 +138,7 @@ class SavedArticlesViewController: ColumnarCollectionViewController, EditableCol
     // MARK: - Editing
     
     lazy var availableBatchEditToolbarActions: [BatchEditToolbarAction] = {
-        let addToListItem = BatchEditToolbarActionType.addTo.action(with: self)
+        let addToListItem = BatchEditToolbarActionType.addToList.action(with: self)
         let unsaveItem = BatchEditToolbarActionType.unsave.action(with: self)
         return [addToListItem, unsaveItem]
     }()
@@ -169,7 +162,7 @@ class SavedArticlesViewController: ColumnarCollectionViewController, EditableCol
             return estimate
         }
         configure(cell: placeholderCell, forItemAt: indexPath, layoutOnly: true)
-        estimate.height = placeholderCell.sizeThatFits(CGSize(width: columnWidth, height: UIViewNoIntrinsicMetric), apply: false).height
+        estimate.height = placeholderCell.sizeThatFits(CGSize(width: columnWidth, height: UIView.noIntrinsicMetric), apply: false).height
         estimate.precalculated = true
         cellLayoutEstimate = estimate
         return estimate
@@ -273,44 +266,47 @@ extension SavedArticlesViewController: ActionDelegate {
         let _ = editController.isClosed
     }
     
-    internal func didPerformBatchEditToolbarAction(_ action: BatchEditToolbarAction) -> Bool {
+    internal func didPerformBatchEditToolbarAction(_ action: BatchEditToolbarAction, completion: @escaping (Bool) -> Void) {
         guard let selectedIndexPaths = collectionView.indexPathsForSelectedItems else {
-            return false
+            completion(false)
+            return
         }
         
         let articles = selectedIndexPaths.compactMap({ article(at: $0) })
         
         switch action.type {
-        case .update:
-            return false
         case .addTo:
             let addArticlesToReadingListViewController = AddArticlesToReadingListViewController(with: dataStore, articles: articles, theme: theme)
             let navigationController = WMFThemeableNavigationController(rootViewController: addArticlesToReadingListViewController, theme: theme)
             navigationController.isNavigationBarHidden = true
             addArticlesToReadingListViewController.delegate = self
-            present(navigationController, animated: true)
-            return true
+            present(navigationController, animated: true) {
+                completion(true)
+            }
         case .unsave:
             let alertController = ReadingListsAlertController()
             let delete = ReadingListsAlertActionType.delete.action {
                 self.delete(articles: articles)
+                completion(true)
             }
-            var didPerform = false
-            return alertController.showAlert(presenter: self, for: articles, with: [ReadingListsAlertActionType.cancel.action(), delete], completion: { didPerform = true }) {
-                self.delete(articles: articles)
-                didPerform = true
-                return didPerform
+            let cancel = ReadingListsAlertActionType.cancel.action {
+                completion(false)
+            }
+            alertController.showAlertIfNeeded(presenter: self, for: articles, with: [cancel, delete]) { showed in
+                if !showed {
+                    self.delete(articles: articles)
+                    completion(true)
+                }
             }
         default:
-            break
+            completion(false)
         }
-        return false
     }
     
     private func delete(articles: [WMFArticle]) {
         dataStore.readingListsController.unsave(articles, in: dataStore.viewContext)
         let articlesCount = articles.count
-        UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, CommonStrings.articleDeletedNotification(articleCount: articlesCount))
+        UIAccessibility.post(notification: UIAccessibility.Notification.announcement, argument: CommonStrings.articleDeletedNotification(articleCount: articlesCount))
         let language = articles.count == 1 ? articles.first?.url?.wmf_language : nil
         ReadingListsFunnel.shared.logUnsaveInReadingList(articlesCount: articlesCount, language: language)
     }
@@ -324,10 +320,14 @@ extension SavedArticlesViewController: ActionDelegate {
         }
         let alertController = ReadingListsAlertController()
         let unsave = ReadingListsAlertActionType.unsave.action { let _ = self.editController.didPerformAction(action) }
-        let cancel = ReadingListsAlertActionType.cancel.action { self.editController.close() }
-        return alertController.showAlert(presenter: self, for: [article], with: [cancel, unsave], completion: nil) {
-            return self.editController.didPerformAction(action)
+        let cancel = ReadingListsAlertActionType.cancel.action()
+        let actions = [cancel, unsave]
+        alertController.showAlertIfNeeded(presenter: self, for: [article], with: actions) { showed in
+            if !showed {
+                let _ = self.editController.didPerformAction(action)
+            }
         }
+        return true
     }
     
     func didPerformAction(_ action: Action) -> Bool {
@@ -408,17 +408,17 @@ extension SavedArticlesViewController {
         guard !editController.isActive else {
             return nil // don't allow 3d touch when swipe actions are active
         }
-        guard let indexPath = collectionView.indexPathForItem(at: location),
-            let cell = collectionView.cellForItem(at: indexPath) as? SavedArticlesCollectionViewCell,
-            let url = articleURL(at: indexPath)
-            else {
+        
+        guard
+            let indexPath = collectionViewIndexPathForPreviewingContext(previewingContext, location: location),
+            let articleURL = articleURL(at: indexPath)
+        else {
                 return nil
         }
-        previewingContext.sourceRect = cell.convert(cell.bounds, to: collectionView)
         
-        let articleViewController = WMFArticleViewController(articleURL: url, dataStore: dataStore, theme: self.theme)
+        let articleViewController = WMFArticleViewController(articleURL: articleURL, dataStore: dataStore, theme: theme)
         articleViewController.articlePreviewingActionsDelegate = self
-        articleViewController.wmf_addPeekableChildViewController(for: url, dataStore: dataStore, theme: theme)
+        articleViewController.wmf_addPeekableChildViewController(for: articleURL, dataStore: dataStore, theme: theme)
         return articleViewController
     }
     
@@ -435,18 +435,6 @@ extension SavedArticlesViewController: SavedArticlesCollectionViewCellDelegate {
         let viewController = tag.isLast ? ReadingListsViewController(with: dataStore, readingLists: readingListsForArticle(at: tag.indexPath)) : ReadingListDetailViewController(for: tag.readingList, with: dataStore)
         viewController.apply(theme: theme)
         wmf_push(viewController, animated: true)
-    }
-}
-
-// MARK: - Analytics
-
-extension SavedArticlesViewController: AnalyticsContextProviding, AnalyticsViewNameProviding {
-    var analyticsName: String {
-        return "SavedArticles"
-    }
-    
-    var analyticsContext: String {
-        return analyticsName
     }
 }
 

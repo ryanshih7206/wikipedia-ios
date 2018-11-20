@@ -36,6 +36,12 @@ typedef NS_ENUM(int32_t, WMFContentGroupKind) {
     WMFContentGroupKindReadingList = 15
 };
 
+typedef NS_ENUM(int16_t, WMFContentGroupUndoType) {
+    WMFContentGroupUndoTypeNone = 0,
+    WMFContentGroupUndoTypeContentGroupKind = 1,
+    WMFContentGroupUndoTypeContentGroup = 2
+};
+
 @interface WMFContentGroup (Extensions)
 
 + (nullable NSString *)databaseKeyForURL:(nullable NSURL *)URL;
@@ -44,13 +50,15 @@ typedef NS_ENUM(int32_t, WMFContentGroupKind) {
 
 @property (nonatomic, assign) WMFContentGroupKind contentGroupKind;
 
+@property (nonatomic, assign) WMFContentGroupUndoType undoType;
+
 @property (nonatomic, strong, nullable) NSURL *URL;
 @property (nonatomic, strong, nullable) NSURL *articleURL;
 @property (nonatomic, strong, nullable) NSURL *siteURL;
 
 - (void)updateKey; //Sets key property based on content group kind
 - (void)updateContentType;
-- (void)updateDailySortPriority;
+- (void)updateDailySortPriorityWithSiteURLSortOrder:(nullable NSDictionary<NSString *, NSNumber *> *)siteURLSortOrder;
 
 + (nullable NSURL *)mainPageURLForSiteURL:(NSURL *)URL;
 + (nullable NSURL *)continueReadingContentGroupURL;
@@ -101,6 +109,8 @@ typedef NS_ENUM(int32_t, WMFContentGroupKind) {
 
 - (void)enumerateContentGroupsOfKind:(WMFContentGroupKind)kind sortedByKey:(NSString *)key ascending:(BOOL)ascending withBlock:(void (^)(WMFContentGroup *_Nonnull group, BOOL *stop))block;
 
+- (nullable WMFContentGroup *)newestVisibleGroupOfKind:(WMFContentGroupKind)kind;
+
 - (nullable WMFContentGroup *)newestGroupOfKind:(WMFContentGroupKind)kind;
 
 - (nullable WMFContentGroup *)groupOfKind:(WMFContentGroupKind)kind forDate:(NSDate *)date;
@@ -109,7 +119,7 @@ typedef NS_ENUM(int32_t, WMFContentGroupKind) {
 
 - (nullable NSArray<WMFContentGroup *> *)groupsOfKind:(WMFContentGroupKind)kind forDate:(NSDate *)date;
 
-- (nullable WMFContentGroup *)locationContentGroupWithinMeters:(CLLocationDistance)meters ofLocation:(CLLocation *)location;
+- (nullable WMFContentGroup *)locationContentGroupWithSiteURL:(nullable NSURL *)siteURL withinMeters:(CLLocationDistance)meters ofLocation:(CLLocation *)location;
 
 @end
 

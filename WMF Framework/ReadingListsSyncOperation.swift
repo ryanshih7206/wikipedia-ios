@@ -65,28 +65,9 @@ internal class ReadingListsSyncOperation: ReadingListsOperation {
         
         let taskGroup = WMFTaskGroup()
         
-        let authenticationDelegate = readingListsController.authenticationDelegate
-        let isUserLoggedInLocally = authenticationDelegate?.isUserLoggedInLocally() ?? false
-        let isUserLoggedInRemotely = authenticationDelegate?.isUserLoggedInRemotely() ?? false
-        let isUserLoggedIn = isUserLoggedInLocally && isUserLoggedInRemotely
-        
-        let reLogin = {
-            guard let authenticationDelegate = authenticationDelegate else {
-                assertionFailure("authenticationDelegate is nil")
-                return
-            }
-            taskGroup.enter()
-            authenticationDelegate.attemptLogin({
-                taskGroup.leave()
-            }, failure: { _ in })
-            taskGroup.wait()
-        }
-        
-        if isUserLoggedInLocally && !isUserLoggedInRemotely {
-            reLogin()
-        }
+        let hasValidLocalCredentials = apiController.session.hasValidCentralAuthCookies(for: Configuration.current.wikipediaCookieDomain)
     
-        if syncEndpointsAreAvailable && syncState.contains(.needsRemoteDisable), isUserLoggedIn {
+        if syncEndpointsAreAvailable && syncState.contains(.needsRemoteDisable) && hasValidLocalCredentials {
             var disableReadingListsError: Error? = nil
             taskGroup.enter()
             apiController.teardownReadingLists(completion: { (error) in
@@ -174,7 +155,7 @@ internal class ReadingListsSyncOperation: ReadingListsOperation {
             self.finish()
         }
         
-        guard isUserLoggedIn else {
+        guard hasValidLocalCredentials else {
             try localSyncOnly()
             return
         }
@@ -415,7 +396,7 @@ internal class ReadingListsSyncOperation: ReadingListsOperation {
                         let articleURLs = results.compactMap { $0.articleURL(forSiteURL: siteURL) }
                         taskGroup.enter()
                         var summaryResponses: [String: [String: Any]] = [:]
-                        Session.shared.fetchArticleSummaryResponsesForArticles(withURLs: articleURLs, completion: { (actualSummaryResponses) in
+                        apiController.session.fetchArticleSummaryResponsesForArticles(withURLs: articleURLs, completion: { (actualSummaryResponses) in
                             // workaround this method not being async
                             summaryResponses = actualSummaryResponses
                             taskGroup.leave()
@@ -480,7 +461,7 @@ internal class ReadingListsSyncOperation: ReadingListsOperation {
         if newReadingLists.count > 0 {
             let userInfo = [ReadingListsController.readingListsWereSplitNotificationEntryLimitKey: size]
             NotificationCenter.default.post(name: ReadingListsController.readingListsWereSplitNotification, object: nil, userInfo: userInfo)
-            UserDefaults.wmf_userDefaults().wmf_setDidSplitExistingReadingLists(true)
+            UserDefaults.wmf.wmf_setDidSplitExistingReadingLists(true)
         }
         return newReadingLists
     }
@@ -510,7 +491,7 @@ internal class ReadingListsSyncOperation: ReadingListsOperation {
                         moc.delete(localReadingList)
                     } else if !localReadingList.isDefault {
                         let entryLimit = moc.wmf_readingListsConfigMaxListsPerUser
-                        if localReadingList.countOfEntries > entryLimit && !UserDefaults.wmf_userDefaults().wmf_didSplitExistingReadingLists() {
+                        if localReadingList.countOfEntries > entryLimit && !UserDefaults.wmf.wmf_didSplitExistingReadingLists() {
                             if let splitReadingLists = try? split(readingList: localReadingList, intoReadingListsOfSize: entryLimit, in: moc) {
                                 listsToCreate.append(contentsOf: splitReadingLists)
                             }
@@ -752,6 +733,7 @@ internal class ReadingListsSyncOperation: ReadingListsOperation {
             return
         }
         let group = WMFTaskGroup()
+        let semaphore = DispatchSemaphore(value: 1)
         var remoteEntriesToCreateLocallyByArticleKey: [String: APIReadingListEntry] = [:]
         var requestedArticleKeys: Set<String> = []
         var articleSummariesByArticleKey: [String: [String: Any]] = [:]
@@ -775,12 +757,14 @@ internal class ReadingListsSyncOperation: ReadingListsOperation {
                     articlesByKey[articleKey] = article
                 } else {
                     group.enter()
-                    Session.shared.fetchSummary(for: articleURL, completionHandler: { (result, response, error) in
+                    apiController.session.fetchSummary(for: articleURL, completionHandler: { (result, response, error) in
                         guard let result = result else {
                             group.leave()
                             return
                         }
+                        semaphore.wait()
                         articleSummariesByArticleKey[articleKey] = result
+                        semaphore.signal()
                         group.leave()
                     })
                     entryCount += 1

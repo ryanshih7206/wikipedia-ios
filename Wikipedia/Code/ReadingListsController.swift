@@ -106,11 +106,8 @@ public typealias ReadingListsController = WMFReadingListsController
 
     internal weak var dataStore: MWKDataStore!
     internal let apiController = ReadingListsAPIController()
-    
-    public weak var authenticationDelegate: AuthenticationDelegate?
-    
+        
     private let operationQueue = OperationQueue()
-    private var updateTimer: Timer?
     
     private var observedOperations: [Operation: NSKeyValueObservation] = [:]
     private var isSyncing = false {
@@ -376,7 +373,7 @@ public typealias ReadingListsController = WMFReadingListsController
             if doFullSync {
                 self.fullSync(completion)
             } else {
-                self.backgroundUpdate(completion)
+                self._sync(completion)
             }
         }
     }
@@ -418,6 +415,32 @@ public typealias ReadingListsController = WMFReadingListsController
             } catch let error {
                 DDLogError("Error saving after sync state update: \(error)")
             }
+        }
+    }
+
+    @objc public var maxEntriesPerList: NSNumber {
+        get {
+            assert(Thread.isMainThread)
+            let moc = dataStore.viewContext
+            return moc.wmf_readingListsConfigMaxEntriesPerList
+        }
+        set {
+            assert(Thread.isMainThread)
+            let moc = dataStore.viewContext
+            moc.wmf_readingListsConfigMaxEntriesPerList = newValue
+        }
+    }
+
+    @objc public var maxListsPerUser: Int {
+        get {
+            assert(Thread.isMainThread)
+            let moc = dataStore.viewContext
+            return moc.wmf_readingListsConfigMaxListsPerUser
+        }
+        set {
+            assert(Thread.isMainThread)
+            let moc = dataStore.viewContext
+            moc.wmf_readingListsConfigMaxListsPerUser = newValue
         }
     }
     
@@ -465,11 +488,7 @@ public typealias ReadingListsController = WMFReadingListsController
     }
     
     @objc public func start() {
-        guard updateTimer == nil else {
-            return
-        }
         assert(Thread.isMainThread)
-        updateTimer = Timer.scheduledTimer(timeInterval: 15, target: self, selector: #selector(sync), userInfo: nil, repeats: true)
         sync()
     }
     
@@ -483,23 +502,10 @@ public typealias ReadingListsController = WMFReadingListsController
     
     @objc public func stop(_ completion: @escaping () -> Void) {
         assert(Thread.isMainThread)
-        updateTimer?.invalidate()
-        updateTimer = nil
         cancelSync(completion)
     }
     
-    @objc public func backgroundUpdate(_ completion: @escaping () -> Void) {
-        #if TEST
-        #else
-        let sync = ReadingListsSyncOperation(readingListsController: self)
-        addOperation(sync)
-        operationQueue.addOperation {
-            DispatchQueue.main.async(execute: completion)
-        }
-        #endif
-    }
-    
-    @objc public func fullSync(_ completion: @escaping () -> Void) {
+    @objc public func fullSync(_ completion: (() -> Void)? = nil) {
         #if TEST
         #else
             var newValue = self.syncState
@@ -508,20 +514,26 @@ public typealias ReadingListsController = WMFReadingListsController
                 newValue.insert(.needsSync)
                 self.syncState = newValue
             }
-            let sync = ReadingListsSyncOperation(readingListsController: self)
-            addOperation(sync)
-            operationQueue.addOperation {
-                DispatchQueue.main.async(execute: completion)
-            }
+            _sync({
+                if let completion = completion {
+                    DispatchQueue.main.async(execute: completion)
+                }
+            })
         #endif
     }
     
-    @objc private func _sync() {
+    @objc private func _sync(_ completion: (() -> Void)? = nil) {
         let sync = ReadingListsSyncOperation(readingListsController: self)
         addOperation(sync)
+        if let completion = completion {
+            let completionBlockOp = BlockOperation(block: completion)
+            completionBlockOp.addDependency(sync)
+            operationQueue.addOperation(completionBlockOp)
+        }
     }
     
     @objc private func _syncIfNotSyncing() {
+        assert(Thread.isMainThread)
         guard operationQueue.operationCount == 0 else {
             return
         }
@@ -754,5 +766,21 @@ public extension NSManagedObjectContext {
         let request: NSFetchRequest<ReadingList> = ReadingList.fetchRequest()
         request.predicate = NSPredicate(format: "isDeletedLocally == NO")
         return try self.count(for: request)
+    }
+}
+
+extension ReadingListsController: PeriodicWorker {
+    public func doPeriodicWork(_ completion: @escaping () -> Void) {
+        DispatchQueue.main.async {
+            self._sync(completion)
+        }
+    }
+}
+
+extension ReadingListsController: BackgroundFetcher {
+    public func performBackgroundFetch(_ completion: @escaping (UIBackgroundFetchResult) -> Void) {
+        doPeriodicWork {
+            completion(.newData)
+        }
     }
 }

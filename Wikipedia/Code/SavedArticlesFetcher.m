@@ -34,6 +34,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, strong) SavedArticlesFetcherProgressManager *savedArticlesFetcherProgressManager;
 
+@property (nonatomic) UIBackgroundTaskIdentifier backgroundTaskIdentifier;
+
 @end
 
 @implementation SavedArticlesFetcher
@@ -56,6 +58,7 @@ static SavedArticlesFetcher *_articleFetcher = nil;
     NSParameterAssert(imageInfoFetcher);
     self = [super init];
     if (self) {
+        self.backgroundTaskIdentifier = UIBackgroundTaskInvalid;
         self.fetchesInProcessCount = @0;
         self.accessQueue = dispatch_queue_create("org.wikipedia.savedarticlesarticleFetcher.accessQueue", DISPATCH_QUEUE_SERIAL);
         self.fetchOperationsByArticleTitle = [NSMutableDictionary new];
@@ -113,6 +116,16 @@ static SavedArticlesFetcher *_articleFetcher = nil;
     [self update];
 }
 
+- (void)cancelAllRequests {
+    [self.imageController cancelPermanentCacheRequests];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSArray *allKeys = [self.fetchOperationsByArticleTitle.allKeys copy];
+        for (NSURL *articleURL in allKeys) {
+            [self cancelFetchForArticleURL:articleURL];
+        }
+    });
+}
+
 - (void)stop {
     self.running = NO;
     [self unobserveSavedPages];
@@ -121,6 +134,14 @@ static SavedArticlesFetcher *_articleFetcher = nil;
 #pragma mark - Observing
 
 - (void)articleWasUpdated:(NSNotification *)note {
+    id object = [note object];
+    if (![object isKindOfClass:[WMFArticle class]]) {
+        return;
+    }
+    WMFArticle *article = object;
+    if (![article hasChangedValuesForCurrentEventThatAffectSavedArticlesFetch]) {
+        return;
+    }
     [self update];
 }
 
@@ -130,6 +151,18 @@ static SavedArticlesFetcher *_articleFetcher = nil;
         return;
     }
     self.updating = YES;
+    if (self.backgroundTaskIdentifier == UIBackgroundTaskInvalid) {
+        self.backgroundTaskIdentifier = [UIApplication.sharedApplication beginBackgroundTaskWithName:@"SavedArticlesFetch" expirationHandler:^{
+            [self cancelAllRequests];
+            [self stop];
+        }];
+    }
+    dispatch_block_t endBackgroundTask = ^{
+        if (self.backgroundTaskIdentifier != UIBackgroundTaskInvalid) {
+            [UIApplication.sharedApplication endBackgroundTask:self.backgroundTaskIdentifier];
+            self.backgroundTaskIdentifier = UIBackgroundTaskInvalid;
+        }
+    };
     NSAssert([NSThread isMainThread], @"Update must be called on the main thread");
     NSManagedObjectContext *moc = self.dataStore.viewContext;
     
@@ -163,6 +196,7 @@ static SavedArticlesFetcher *_articleFetcher = nil;
                 }];
         } else {
             self.updating = NO;
+            endBackgroundTask();
         }
     } else {
         NSFetchRequest *downloadedRequest = [WMFArticle fetchRequest];
@@ -178,6 +212,7 @@ static SavedArticlesFetcher *_articleFetcher = nil;
             if (!articleURL) {
                 self.updating = NO;
                 [self updateFetchesInProcessCount];
+                endBackgroundTask();
                 return;
             }
             [self cancelFetchForArticleURL:articleURL];
@@ -191,6 +226,7 @@ static SavedArticlesFetcher *_articleFetcher = nil;
             self.updating = NO;
             [self notifyDelegateIfFinished];
             [self updateFetchesInProcessCount];
+            endBackgroundTask();
         }
     }
 }
@@ -287,7 +323,7 @@ static SavedArticlesFetcher *_articleFetcher = nil;
                 }
             }];
     };
-    if (![[NSUserDefaults wmf_userDefaults] wmf_didFinishLegacySavedArticleImageMigration]) {
+    if (![[NSUserDefaults wmf] wmf_didFinishLegacySavedArticleImageMigration]) {
         WMF_TECH_DEBT_TODO(This legacy migration can be removed after enough users upgrade to 5.5.0)
             [self migrateLegacyImagesInArticle:article
                                     completion:doneMigration];
@@ -319,7 +355,7 @@ static SavedArticlesFetcher *_articleFetcher = nil;
         }
         [self cacheImagesForArticleKey:articleKey withURLsInBackground:imageURLsForSaving failure:failure success:success];
     };
-    if (![[NSUserDefaults wmf_userDefaults] wmf_didFinishLegacySavedArticleImageMigration]) {
+    if (![[NSUserDefaults wmf] wmf_didFinishLegacySavedArticleImageMigration]) {
         WMF_TECH_DEBT_TODO(This legacy migration can be removed after enough users upgrade to 5.0 .5)
             [self migrateLegacyImagesInArticle:article
                                     completion:doneMigration];
@@ -446,11 +482,15 @@ static SavedArticlesFetcher *_articleFetcher = nil;
     WMFArticle *article = [self.dataStore fetchArticleWithURL:url];
     [article updatePropertiesForError:error];
     if (error) {
-        article.isDownloaded = NO;
-        if (error.domain == NSCocoaErrorDomain && error.code == NSFileWriteOutOfSpaceError) {
+        if ([error.domain isEqualToString:NSCocoaErrorDomain] && error.code == NSFileWriteOutOfSpaceError) {
             NSDictionary *userInfo = @{WMFArticleSaveToDiskDidFailErrorKey: error, WMFArticleSaveToDiskDidFailArticleURLKey: url};
             [NSNotificationCenter.defaultCenter postNotificationName:WMFArticleSaveToDiskDidFailNotification object:nil userInfo:userInfo];
             [self stop];
+            article.isDownloaded = NO;
+        } else if ([error.domain isEqualToString:WMFNetworkingErrorDomain] && error.code == WMFNetworkingError_APIError && [error.userInfo[NSLocalizedFailureReasonErrorKey] isEqualToString:@"missingtitle"]) {
+            article.isDownloaded = YES; // skip missing titles
+        } else {
+            article.isDownloaded = NO;
         }
     } else {
         article.isDownloaded = YES;

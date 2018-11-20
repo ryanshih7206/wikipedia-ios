@@ -14,7 +14,6 @@
 #import "WMFSearchResults.h"
 #import "MWKSearchRedirectMapping.h"
 #import "WMFSearchFetcher.h"
-#import "NSHTTPCookieStorage+WMFCloneCookie.h"
 #import "WMFProxyServer.h"
 
 #import "WMFArticleTextActivitySource.h"
@@ -39,7 +38,7 @@
 #import "WMFSettingsViewController.h"
 #import "UIViewController+WMFEmptyView.h"
 #import "UIViewController+WMFDynamicHeightPopoverMessage.h"
-#import "WMFArticleNavigationController.h"
+#import "WMFThemeableNavigationController.h"
 #import "PreviewAndSaveViewController.h"
 #import "WMFFirstRandomViewController.h"
 
