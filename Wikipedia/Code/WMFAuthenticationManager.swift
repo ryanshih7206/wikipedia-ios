@@ -88,10 +88,10 @@ public class WMFAuthenticationManager: Fetcher {
         self.loginWithSavedCredentials { (loginResult) in
             switch loginResult {
             case .success(let result):
-                DDLogDebug("\n\nSuccessfully logged in with saved credentials for user %@.\n\n", result.username)
+                DDLogDebug("\n\nSuccessfully logged in with saved credentials for user %{private}@.\n\n", result.username)
                 self.session.cloneCentralAuthCookies()
             case .alreadyLoggedIn(let result):
-                DDLogDebug("\n\nUser %@ is already logged in.\n\n", result.name)
+                DDLogDebug("\n\nUser %{private}@ is already logged in.\n\n", result.name)
                 self.session.cloneCentralAuthCookies()
             case .failure(let error):
                 DDLogDebug("\n\nloginWithSavedCredentials failed with error %@.\n\n", error.loggingDescription)
