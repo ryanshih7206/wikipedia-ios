@@ -385,7 +385,7 @@ NS_ASSUME_NONNULL_BEGIN
             [self wmf_openExternalUrl:imageInfo.filePageURL];
         } else {
             // There should always be a file page URL, but log an error anyway
-            DDLogError(@"No license URL or file page URL for %@", imageInfo);
+            DDLogError("No license URL or file page URL for %@", imageInfo);
         }
     };
     caption.infoTapCallback = ^{
